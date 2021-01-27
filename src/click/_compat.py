@@ -3,6 +3,7 @@ import io
 import os
 import re
 import sys
+import typing
 from weakref import WeakKeyDictionary
 
 CYGWIN = sys.platform.startswith("cygwin")
@@ -14,7 +15,6 @@ APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.
 WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
 DEFAULT_COLUMNS = 80
 auto_wrap_for_ansi = None
-colorama = None
 get_winterm_size = None
 _ansi_re = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
 
@@ -499,7 +499,7 @@ if WIN:
     # Windows has a smaller terminal
     DEFAULT_COLUMNS = 79
 
-    from ._winconsole import _get_windows_console_stream
+    from ._winconsole import _get_windows_console_stream  # type: ignore
 
     def _get_argv_encoding():
         import locale
@@ -509,9 +509,9 @@ if WIN:
     try:
         import colorama
     except ImportError:
-        pass
+        colorama = None
     else:
-        _ansi_stream_wrappers = WeakKeyDictionary()
+        _ansi_stream_wrappers: typing.Any = WeakKeyDictionary()
 
         def auto_wrap_for_ansi(stream, color=None):
             """This function wraps a stream so that calls through colorama

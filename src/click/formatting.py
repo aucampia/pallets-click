@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import typing
 
 from ._compat import term_len
 from .parser import split_opt
@@ -8,23 +9,31 @@ from .termui import get_terminal_size
 FORCED_WIDTH = None
 
 
-def measure_table(rows):
-    widths = {}
+def measure_table(
+    rows: typing.Iterable[typing.Iterable[str]],
+) -> typing.Tuple[int, ...]:
+    widths: typing.Dict[int, int] = {}
     for row in rows:
         for idx, col in enumerate(row):
             widths[idx] = max(widths.get(idx, 0), term_len(col))
     return tuple(y for x, y in sorted(widths.items()))
 
 
-def iter_rows(rows, col_count):
+def iter_rows(
+    rows: typing.Any, col_count: int
+) -> typing.Generator[typing.Any, None, None]:
     for row in rows:
         row = tuple(row)
         yield row + ("",) * (col_count - len(row))
 
 
 def wrap_text(
-    text, width=78, initial_indent="", subsequent_indent="", preserve_paragraphs=False
-):
+    text: str,
+    width: int = 78,
+    initial_indent: str = "",
+    subsequent_indent: str = "",
+    preserve_paragraphs: bool = False,
+) -> str:
     """A helper function that intelligently wraps text.  By default, it
     assumes that it operates on a single paragraph of text but if the
     `preserve_paragraphs` parameter is provided it will intelligently
@@ -56,10 +65,10 @@ def wrap_text(
         return wrapper.fill(text)
 
     p = []
-    buf = []
+    buf: typing.List[str] = []
     indent = None
 
-    def _flush_par():
+    def _flush_par() -> None:
         if not buf:
             return
         if buf[0].strip() == "\b":
@@ -103,7 +112,14 @@ class HelpFormatter:
                   width clamped to a maximum of 78.
     """
 
-    def __init__(self, indent_increment=2, width=None, max_width=None):
+    buffer: typing.List[str]
+
+    def __init__(
+        self,
+        indent_increment: int = 2,
+        width: typing.Optional[int] = None,
+        max_width: typing.Optional[int] = None,
+    ):
         self.indent_increment = indent_increment
         if max_width is None:
             max_width = 80
@@ -115,19 +131,19 @@ class HelpFormatter:
         self.current_indent = 0
         self.buffer = []
 
-    def write(self, string):
+    def write(self, string: str) -> None:
         """Writes a unicode string into the internal buffer."""
         self.buffer.append(string)
 
-    def indent(self):
+    def indent(self) -> None:
         """Increases the indentation."""
         self.current_indent += self.indent_increment
 
-    def dedent(self):
+    def dedent(self) -> None:
         """Decreases the indentation."""
         self.current_indent -= self.indent_increment
 
-    def write_usage(self, prog, args="", prefix="Usage: "):
+    def write_usage(self, prog: str, args: str = "", prefix: str = "Usage: ") -> None:
         """Writes a usage line into the buffer.
 
         :param prog: the program name.
@@ -161,16 +177,16 @@ class HelpFormatter:
 
         self.write("\n")
 
-    def write_heading(self, heading):
+    def write_heading(self, heading: str) -> None:
         """Writes a heading into the buffer."""
         self.write(f"{'':>{self.current_indent}}{heading}:\n")
 
-    def write_paragraph(self):
+    def write_paragraph(self) -> None:
         """Writes a paragraph into the buffer."""
         if self.buffer:
             self.write("\n")
 
-    def write_text(self, text):
+    def write_text(self, text: str) -> None:
         """Writes re-indented text into the buffer.  This rewraps and
         preserves paragraphs.
         """
@@ -187,7 +203,12 @@ class HelpFormatter:
         )
         self.write("\n")
 
-    def write_dl(self, rows, col_max=30, col_spacing=2):
+    def write_dl(
+        self,
+        rows: typing.Iterable[typing.Iterable[str]],
+        col_max: int = 30,
+        col_spacing: int = 2,
+    ) -> None:
         """Writes a definition list into the buffer.  This is how options
         and commands are usually formatted.
 
@@ -231,7 +252,7 @@ class HelpFormatter:
                 self.write("\n")
 
     @contextmanager
-    def section(self, name):
+    def section(self, name: str) -> typing.Generator[None, None, None]:
         """Helpful context manager that writes a paragraph, a heading,
         and the indents.
 
@@ -246,7 +267,7 @@ class HelpFormatter:
             self.dedent()
 
     @contextmanager
-    def indentation(self):
+    def indentation(self) -> typing.Generator[None, None, None]:
         """A context manager that increases the indentation."""
         self.indent()
         try:
@@ -254,12 +275,12 @@ class HelpFormatter:
         finally:
             self.dedent()
 
-    def getvalue(self):
+    def getvalue(self) -> str:
         """Returns the buffer contents."""
         return "".join(self.buffer)
 
 
-def join_options(options):
+def join_options(options: typing.List[str]) -> typing.Tuple[str, bool]:
     """Given a list of option strings this joins them in the most appropriate
     way and returns them in the form ``(formatted_string,
     any_prefix_is_slash)`` where the second item in the tuple is a flag that
@@ -275,5 +296,5 @@ def join_options(options):
 
     rv.sort(key=lambda x: x[0])
 
-    rv = ", ".join(x[1] for x in rv)
-    return rv, any_prefix_is_slash
+    rvs = ", ".join(x[1] for x in rv)
+    return rvs, any_prefix_is_slash
