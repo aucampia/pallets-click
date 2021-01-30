@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-import typing
+import typing as t
 
 from ._compat import term_len
 from .parser import split_opt
@@ -10,9 +10,9 @@ FORCED_WIDTH = None
 
 
 def measure_table(
-    rows: typing.Iterable[typing.Iterable[str]],
-) -> typing.Tuple[int, ...]:
-    widths: typing.Dict[int, int] = {}
+    rows: t.Iterable[t.Iterable[str]],
+) -> t.Tuple[int, ...]:
+    widths: t.Dict[int, int] = {}
     for row in rows:
         for idx, col in enumerate(row):
             widths[idx] = max(widths.get(idx, 0), term_len(col))
@@ -20,8 +20,8 @@ def measure_table(
 
 
 def iter_rows(
-    rows: typing.Any, col_count: int
-) -> typing.Generator[typing.Any, None, None]:
+    rows: t.Any, col_count: int
+) -> t.Generator[t.Any, None, None]:
     for row in rows:
         row = tuple(row)
         yield row + ("",) * (col_count - len(row))
@@ -65,7 +65,7 @@ def wrap_text(
         return wrapper.fill(text)
 
     p = []
-    buf: typing.List[str] = []
+    buf: t.List[str] = []
     indent = None
 
     def _flush_par() -> None:
@@ -112,13 +112,13 @@ class HelpFormatter:
                   width clamped to a maximum of 78.
     """
 
-    buffer: typing.List[str]
+    buffer: t.List[str]
 
     def __init__(
         self,
         indent_increment: int = 2,
-        width: typing.Optional[int] = None,
-        max_width: typing.Optional[int] = None,
+        width: t.Optional[int] = None,
+        max_width: t.Optional[int] = None,
     ):
         self.indent_increment = indent_increment
         if max_width is None:
@@ -205,7 +205,7 @@ class HelpFormatter:
 
     def write_dl(
         self,
-        rows: typing.Iterable[typing.Iterable[str]],
+        rows: t.Iterable[t.Iterable[str]],
         col_max: int = 30,
         col_spacing: int = 2,
     ) -> None:
@@ -252,7 +252,7 @@ class HelpFormatter:
                 self.write("\n")
 
     @contextmanager
-    def section(self, name: str) -> typing.Generator[None, None, None]:
+    def section(self, name: str) -> t.Generator[None, None, None]:
         """Helpful context manager that writes a paragraph, a heading,
         and the indents.
 
@@ -267,7 +267,7 @@ class HelpFormatter:
             self.dedent()
 
     @contextmanager
-    def indentation(self) -> typing.Generator[None, None, None]:
+    def indentation(self) -> t.Generator[None, None, None]:
         """A context manager that increases the indentation."""
         self.indent()
         try:
@@ -280,7 +280,7 @@ class HelpFormatter:
         return "".join(self.buffer)
 
 
-def join_options(options: typing.List[str]) -> typing.Tuple[str, bool]:
+def join_options(options: t.List[str]) -> t.Tuple[str, bool]:
     """Given a list of option strings this joins them in the most appropriate
     way and returns them in the form ``(formatted_string,
     any_prefix_is_slash)`` where the second item in the tuple is a flag that

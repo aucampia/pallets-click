@@ -1,6 +1,6 @@
 import os
 import sys
-import typing
+import typing as t
 import types
 
 from ._compat import _default_text_stderr
@@ -28,13 +28,13 @@ def _posixify(name: str) -> str:
 
 
 def safecall(
-    func: typing.Callable[..., typing.Any]
-) -> typing.Callable[..., typing.Any]:
+    func: t.Callable[..., t.Any]
+) -> t.Callable[..., t.Any]:
     """Wraps a function so that it swallows exceptions."""
 
     def wrapper(
-        *args: typing.Any, **kwargs: typing.Any
-    ) -> typing.Callable[..., typing.Any]:
+        *args: t.Any, **kwargs: t.Any
+    ) -> t.Callable[..., t.Any]:
         try:
             return func(*args, **kwargs)
         except Exception:
@@ -43,7 +43,7 @@ def safecall(
     return wrapper
 
 
-def make_str(value: typing.Any) -> str:
+def make_str(value: t.Any) -> str:
     """Converts a value into a valid string."""
     if isinstance(value, bytes):
         try:
@@ -60,7 +60,7 @@ def make_default_short_help(help: str, max_length: int = 45) -> str:
         help = help[:line_ending]
     words = help.split()
     total_length = 0
-    result: typing.List[str] = []
+    result: t.List[str] = []
     done = False
 
     for word in words:
@@ -90,18 +90,18 @@ class LazyFile:
 
     filename: str
     mode: str
-    encoding: typing.Optional[str]
+    encoding: t.Optional[str]
     errors: str
     atomic: bool
 
-    _f: typing.Any
+    _f: t.Any
     should_close: bool
 
     def __init__(
         self,
         filename: str,
         mode: str = "r",
-        encoding: typing.Optional[str] = None,
+        encoding: t.Optional[str] = None,
         errors: str = "strict",
         atomic: bool = False,
     ):
@@ -122,7 +122,7 @@ class LazyFile:
             self._f = None
             self.should_close = True
 
-    def __getattr__(self, name: str) -> typing.Any:
+    def __getattr__(self, name: str) -> t.Any:
         return getattr(self.open(), name)
 
     def __repr__(self) -> str:
@@ -130,7 +130,7 @@ class LazyFile:
             return repr(self._f)
         return f"<unopened file '{self.name}' {self.mode}>"
 
-    def open(self) -> typing.Any:
+    def open(self) -> t.Any:
         """Opens the file if it's not yet open.  This call might fail with
         a :exc:`FileError`.  Not handling this error will produce an error
         that Click shows.
@@ -165,24 +165,24 @@ class LazyFile:
 
     def __exit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]],
-        exc_value: typing.Optional[BaseException],
-        tb: typing.Optional[types.TracebackType],
+        exc_type: t.Optional[t.Type[BaseException]],
+        exc_value: t.Optional[BaseException],
+        tb: t.Optional[types.TracebackType],
     ) -> None:
         self.close_intelligently()
 
-    def __iter__(self) -> typing.Iterator[typing.Any]:
+    def __iter__(self) -> t.Iterator[t.Any]:
         self.open()
         return iter(self._f)
 
 
 class KeepOpenFile:
-    _file: typing.Any
+    _file: t.Any
 
-    def __init__(self, file: typing.Any):
+    def __init__(self, file: t.Any):
         self._file = file
 
-    def __getattr__(self, name: str) -> typing.Any:
+    def __getattr__(self, name: str) -> t.Any:
         return getattr(self._file, name)
 
     def __enter__(self) -> "KeepOpenFile":
@@ -190,25 +190,25 @@ class KeepOpenFile:
 
     def __exit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]],
-        exc_value: typing.Optional[BaseException],
-        tb: typing.Optional[types.TracebackType],
+        exc_type: t.Optional[t.Type[BaseException]],
+        exc_value: t.Optional[BaseException],
+        tb: t.Optional[types.TracebackType],
     ) -> None:
         pass
 
     def __repr__(self) -> str:
         return repr(self._file)
 
-    def __iter__(self) -> typing.Iterator[typing.Any]:
+    def __iter__(self) -> t.Iterator[t.Any]:
         return iter(self._file)
 
 
 def echo(
-    message: typing.Optional[str] = None,
-    file: typing.Optional[typing.TextIO] = None,
-    nl: typing.Optional[bool] = True,
+    message: t.Optional[str] = None,
+    file: t.Optional[t.TextIO] = None,
+    nl: t.Optional[bool] = True,
     err: bool = False,
-    color: typing.Optional[bool] = None,
+    color: t.Optional[bool] = None,
 ) -> None:
     """Prints a message plus a newline to the given file or stdout.  On
     first sight, this looks like the print function, but it has improved
@@ -258,9 +258,9 @@ def echo(
     """
     if file is None:
         if err:
-            file = typing.cast(typing.TextIO, _default_text_stderr())
+            file = t.cast(t.TextIO, _default_text_stderr())
         else:
-            file = typing.cast(typing.TextIO, _default_text_stdout())
+            file = t.cast(t.TextIO, _default_text_stdout())
 
     # Convert non bytes/text into the native string type.
     if message is not None and not isinstance(message, echo_native_types):
@@ -296,7 +296,7 @@ def echo(
             message = strip_ansi(message)
         elif WIN:
             if auto_wrap_for_ansi is not None:
-                file = typing.cast(typing.TextIO, auto_wrap_for_ansi(file))
+                file = t.cast(t.TextIO, auto_wrap_for_ansi(file))
             elif not color:
                 message = strip_ansi(message)
 
@@ -305,7 +305,7 @@ def echo(
     file.flush()
 
 
-def get_binary_stream(name: str) -> typing.BinaryIO:
+def get_binary_stream(name: str) -> t.BinaryIO:
     """Returns a system stream for byte processing.
 
     :param name: the name of the stream to open.  Valid names are ``'stdin'``,
@@ -318,8 +318,8 @@ def get_binary_stream(name: str) -> typing.BinaryIO:
 
 
 def get_text_stream(
-    name: str, encoding: typing.Optional[str] = None, errors: str = "strict"
-) -> typing.TextIO:
+    name: str, encoding: t.Optional[str] = None, errors: str = "strict"
+) -> t.TextIO:
     """Returns a system stream for text processing.  This usually returns
     a wrapped stream around a binary stream returned from
     :func:`get_binary_stream` but it also can take shortcuts for already
@@ -339,7 +339,7 @@ def get_text_stream(
 def open_file(
     filename: str,
     mode: str = "r",
-    encoding: typing.Optional[str] = None,
+    encoding: t.Optional[str] = None,
     errors: str = "strict",
     lazy: bool = False,
     atomic: bool = False,
@@ -374,7 +374,7 @@ def open_file(
     return f
 
 
-def get_os_args() -> typing.List[str]:
+def get_os_args() -> t.List[str]:
     """Returns the argument part of ``sys.argv``, removing the first
     value which is the name of the script.
 
@@ -472,7 +472,7 @@ class PacifyFlushWrapper:
     pipe, all calls and attributes are proxied.
     """
 
-    def __init__(self, wrapped: typing.Any) -> None:
+    def __init__(self, wrapped: t.Any) -> None:
         self.wrapped = wrapped
 
     def flush(self) -> None:
@@ -484,7 +484,7 @@ class PacifyFlushWrapper:
             if e.errno != errno.EPIPE:
                 raise
 
-    def __getattr__(self, attr: str) -> typing.Any:
+    def __getattr__(self, attr: str) -> t.Any:
         return getattr(self.wrapped, attr)
 
 

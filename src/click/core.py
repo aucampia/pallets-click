@@ -2,7 +2,7 @@ import enum
 import errno
 import os
 import sys
-import typing
+import typing as t
 import types
 import collections.abc
 from contextlib import contextmanager
@@ -39,7 +39,7 @@ from .utils import make_default_short_help
 from .utils import make_str
 from .utils import PacifyFlushWrapper
 
-if typing.TYPE_CHECKING:
+if t.TYPE_CHECKING:
     from . import shell_completion as shell_completion_t
 
 
@@ -51,7 +51,7 @@ SUBCOMMANDS_METAVAR = "COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]..."
 DEPRECATED_HELP_NOTICE = " (DEPRECATED)"
 DEPRECATED_INVOKE_NOTICE = "DeprecationWarning: The command {name} is deprecated."
 
-GenericT = typing.TypeVar("GenericT")
+GenericT = t.TypeVar("GenericT")
 
 
 def _maybe_show_deprecated_notice(cmd: "Command") -> None:
@@ -59,7 +59,7 @@ def _maybe_show_deprecated_notice(cmd: "Command") -> None:
         echo(style(DEPRECATED_INVOKE_NOTICE.format(name=cmd.name), fg="red"), err=True)
 
 
-def _fast_exit(code: int) -> typing.NoReturn:
+def _fast_exit(code: int) -> t.NoReturn:
     """Low-level exit that skips Python's cleanup but speeds up exit by
     about 10ms for things like shell completion.
 
@@ -72,7 +72,7 @@ def _fast_exit(code: int) -> typing.NoReturn:
 
 def _complete_visible_commands(
     ctx: "Context", incomplete: str
-) -> typing.Generator[typing.Tuple[str, "Command"], None, None]:
+) -> t.Generator[t.Tuple[str, "Command"], None, None]:
     """List all the subcommands of a group that start with the
     incomplete value and aren't hidden.
 
@@ -82,7 +82,7 @@ def _complete_visible_commands(
     assert isinstance(ctx.command, MultiCommand)
     for name in ctx.command.list_commands(ctx):
         if name.startswith(incomplete):
-            command = typing.cast(Command, ctx.command.get_command(ctx, name))
+            command = t.cast(Command, ctx.command.get_command(ctx, name))
 
             if not command.hidden:
                 yield name, command
@@ -114,14 +114,14 @@ def _check_multicommand(
 
 def batch(
     iterable: collections.abc.Iterable[GenericT], batch_size: int
-) -> typing.List[typing.Tuple[GenericT, ...]]:
+) -> t.List[t.Tuple[GenericT, ...]]:
     return list(zip(*repeat(iter(iterable), batch_size)))
 
 
 @contextmanager
 def augment_usage_errors(
-    ctx: "Context", param: typing.Optional["Parameter"] = None
-) -> typing.Generator[None, None, None]:
+    ctx: "Context", param: t.Optional["Parameter"] = None
+) -> t.Generator[None, None, None]:
     """Context manager that attaches extra information to exceptions."""
     try:
         yield
@@ -138,15 +138,15 @@ def augment_usage_errors(
 
 
 def iter_params_for_processing(
-    invocation_order: typing.List["Parameter"],
-    declaration_order: typing.List["Parameter"],
-) -> typing.List["Parameter"]:
+    invocation_order: t.List["Parameter"],
+    declaration_order: t.List["Parameter"],
+) -> t.List["Parameter"]:
     """Given a sequence of parameters in the order as should be considered
     for processing and an iterable of parameters that exist, this returns
     a list in the correct order as they should be processed.
     """
 
-    def sort_key(item: Parameter) -> typing.Tuple[bool, float]:
+    def sort_key(item: Parameter) -> t.Tuple[bool, float]:
         idx: float
         try:
             idx = invocation_order.index(item)
@@ -273,31 +273,31 @@ class Context:
         ``token_normalize_func`` parameters.
     """
 
-    params: typing.Dict[str, str]
-    args: typing.List[str]
-    protected_args: typing.List[str]
+    params: t.Dict[str, str]
+    args: t.List[str]
+    protected_args: t.List[str]
 
-    _close_callbacks: typing.List[typing.Callable[[], None]]
+    _close_callbacks: t.List[t.Callable[[], None]]
     _depth: int
-    _parameter_source: typing.Dict[str, "ParameterSource"]
+    _parameter_source: t.Dict[str, "ParameterSource"]
     _exit_stack: ExitStack
-    _meta: typing.Dict[str, typing.Any]
+    _meta: t.Dict[str, t.Any]
 
     command: "BaseCommand"
-    parent: typing.Optional["Context"]
-    info_name: typing.Optional[str]
-    obj: typing.Any
-    auto_envvar_prefix: typing.Optional[str]
-    default_map: typing.Optional[typing.Mapping[str, typing.Any]]
-    terminal_width: typing.Optional[int]
-    max_content_width: typing.Optional[int]
+    parent: t.Optional["Context"]
+    info_name: t.Optional[str]
+    obj: t.Any
+    auto_envvar_prefix: t.Optional[str]
+    default_map: t.Optional[t.Mapping[str, t.Any]]
+    terminal_width: t.Optional[int]
+    max_content_width: t.Optional[int]
     resilient_parsing: bool
     allow_interspersed_args: bool
     ignore_unknown_options: bool
-    help_option_names: typing.List[str]
-    token_normalize_func: typing.Optional[typing.Callable[[str], str]]
-    color: typing.Optional[bool]
-    show_default: typing.Optional[bool]
+    help_option_names: t.List[str]
+    token_normalize_func: t.Optional[t.Callable[[str], str]]
+    color: t.Optional[bool]
+    show_default: t.Optional[bool]
 
     #: The formatter class to create with :meth:`make_formatter`.
     #:
@@ -307,21 +307,21 @@ class Context:
     def __init__(
         self,
         command: "BaseCommand",
-        parent: typing.Optional["Context"] = None,
-        info_name: typing.Optional[str] = None,
-        obj: typing.Any = None,
-        auto_envvar_prefix: typing.Optional[str] = None,
-        default_map: typing.Optional[typing.Mapping[str, typing.Any]] = None,
-        terminal_width: typing.Optional[int] = None,
-        max_content_width: typing.Optional[int] = None,
+        parent: t.Optional["Context"] = None,
+        info_name: t.Optional[str] = None,
+        obj: t.Any = None,
+        auto_envvar_prefix: t.Optional[str] = None,
+        default_map: t.Optional[t.Mapping[str, t.Any]] = None,
+        terminal_width: t.Optional[int] = None,
+        max_content_width: t.Optional[int] = None,
         resilient_parsing: bool = False,
-        allow_extra_args: typing.Optional[bool] = None,
-        allow_interspersed_args: typing.Optional[bool] = None,
-        ignore_unknown_options: typing.Optional[bool] = None,
-        help_option_names: typing.Optional[typing.List[str]] = None,
-        token_normalize_func: typing.Optional[typing.Callable[[str], str]] = None,
-        color: typing.Optional[bool] = None,
-        show_default: typing.Optional[bool] = None,
+        allow_extra_args: t.Optional[bool] = None,
+        allow_interspersed_args: t.Optional[bool] = None,
+        ignore_unknown_options: t.Optional[bool] = None,
+        help_option_names: t.Optional[t.List[str]] = None,
+        token_normalize_func: t.Optional[t.Callable[[str], str]] = None,
+        color: t.Optional[bool] = None,
+        show_default: t.Optional[bool] = None,
     ):
         #: the parent context or `None` if none exists.
         self.parent = parent
@@ -351,7 +351,7 @@ class Context:
             and parent is not None
             and parent.default_map is not None
         ):
-            default_map = parent.default_map.get(typing.cast(str, info_name))
+            default_map = parent.default_map.get(t.cast(str, info_name))
         self.default_map = default_map
 
         #: This flag indicates if a subcommand is going to be executed. A
@@ -461,7 +461,7 @@ class Context:
         self._parameter_source = {}
         self._exit_stack = ExitStack()
 
-    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self) -> t.Dict[str, t.Any]:
         """Gather information that could be useful for a tool generating
         user-facing documentation. This traverses the entire CLI
         structure.
@@ -489,9 +489,9 @@ class Context:
 
     def __exit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]],
-        exc_value: typing.Optional[BaseException],
-        tb: typing.Optional[types.TracebackType],
+        exc_type: t.Optional[t.Type[BaseException]],
+        exc_value: t.Optional[BaseException],
+        tb: t.Optional[types.TracebackType],
     ) -> None:
         self._depth -= 1
         if self._depth == 0:
@@ -499,7 +499,7 @@ class Context:
         pop_context()
 
     @contextmanager
-    def scope(self, cleanup: bool = True) -> typing.Generator["Context", None, None]:
+    def scope(self, cleanup: bool = True) -> t.Generator["Context", None, None]:
         """This helper method can be used with the context object to promote
         it to the current thread local (see :func:`get_current_context`).
         The default behavior of this is to invoke the cleanup functions which
@@ -537,7 +537,7 @@ class Context:
                 self._depth -= 1
 
     @property
-    def meta(self) -> typing.Dict[str, typing.Any]:
+    def meta(self) -> t.Dict[str, t.Any]:
         """This is a dictionary which is shared with all the contexts
         that are nested.  It exists so that click utilities can store some
         state here if they need to.  It is however the responsibility of
@@ -578,7 +578,7 @@ class Context:
             width=self.terminal_width, max_width=self.max_content_width
         )
 
-    def with_resource(self, context_manager: typing.ContextManager[None]) -> None:
+    def with_resource(self, context_manager: t.ContextManager[None]) -> None:
         """Register a resource as if it were used in a ``with``
         statement. The resource will be cleaned up when the context is
         popped.
@@ -607,7 +607,7 @@ class Context:
         """
         return self._exit_stack.enter_context(context_manager)
 
-    def call_on_close(self, f: typing.Callable[[], None]) -> typing.Callable[[], None]:
+    def call_on_close(self, f: t.Callable[[], None]) -> t.Callable[[], None]:
         """Register a function to be called when the context tears down.
 
         This can be used to close resources opened during the script
@@ -653,16 +653,16 @@ class Context:
         return node
 
     def find_object(
-        self, object_type: typing.Type[GenericT]
-    ) -> typing.Optional[GenericT]:
+        self, object_type: t.Type[GenericT]
+    ) -> t.Optional[GenericT]:
         """Finds the closest object of a given type."""
-        node: typing.Optional["Context"] = self
+        node: t.Optional["Context"] = self
         while node is not None:
             if isinstance(node.obj, object_type):
                 return node.obj
             node = node.parent
 
-    def ensure_object(self, object_type: typing.Type[GenericT]) -> GenericT:
+    def ensure_object(self, object_type: t.Type[GenericT]) -> GenericT:
         """Like :meth:`find_object` but sets the innermost object to a
         new instance of `object_type` if it does not exist.
         """
@@ -673,7 +673,7 @@ class Context:
 
     def lookup_default(
         self, name: str, call: bool = True
-    ) -> typing.Optional[typing.Any]:
+    ) -> t.Optional[t.Any]:
         """Get the default for a parameter from :attr:`default_map`.
 
         :param name: Name of the parameter.
@@ -691,7 +691,7 @@ class Context:
 
             return value
 
-    def fail(self, message: str) -> typing.NoReturn:
+    def fail(self, message: str) -> t.NoReturn:
         """Aborts the execution of the program with a specific error
         message.
 
@@ -699,11 +699,11 @@ class Context:
         """
         raise UsageError(message, self)
 
-    def abort(self) -> typing.NoReturn:
+    def abort(self) -> t.NoReturn:
         """Aborts the script."""
         raise Abort()
 
-    def exit(self, code: int = 0) -> typing.NoReturn:
+    def exit(self, code: int = 0) -> t.NoReturn:
         """Exits the application with a given exit code."""
         raise Exit(code)
 
@@ -727,7 +727,7 @@ class Context:
         """
         return type(self)(command, info_name=command.name, parent=self)
 
-    def invoke(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:  # noqa: B902
+    def invoke(*args: t.Any, **kwargs: t.Any) -> t.Any:  # noqa: B902
         """Invokes a command callback in exactly the way it expects.  There
         are two ways to invoke this method:
 
@@ -744,7 +744,7 @@ class Context:
         release see :ref:`upgrade-to-3.2`.
         """
         self: "Context" = args[0]
-        callback: typing.Callable[..., typing.Any] = args[1]
+        callback: t.Callable[..., t.Any] = args[1]
         ctx = self
 
         # It's also possible to invoke another command which might or
@@ -770,7 +770,7 @@ class Context:
             with ctx:
                 return callback(*args, **kwargs)
 
-    def forward(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:  # noqa: B902
+    def forward(*args: t.Any, **kwargs: t.Any) -> t.Any:  # noqa: B902
         """Similar to :meth:`invoke` but fills in default keyword
         arguments from the current context if the other command expects
         it.  This cannot invoke callbacks directly, only other commands.
@@ -797,7 +797,7 @@ class Context:
         """
         self._parameter_source[name] = source
 
-    def get_parameter_source(self, name: str) -> typing.Optional["ParameterSource"]:
+    def get_parameter_source(self, name: str) -> t.Optional["ParameterSource"]:
         """Get the source of a parameter. This indicates the location
         from which the value of the parameter was obtained.
 
@@ -850,12 +850,12 @@ class BaseCommand:
     ignore_unknown_options = False
 
     name: str
-    context_settings: typing.Dict[str, typing.Any]
+    context_settings: t.Dict[str, t.Any]
 
     def __init__(
         self,
         name: str,
-        context_settings: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        context_settings: t.Optional[t.Dict[str, t.Any]] = None,
     ):
         #: the name the command thinks it has.  Upon registering a command
         #: on a :class:`Group` the group will default the command name
@@ -867,7 +867,7 @@ class BaseCommand:
         #: an optional dictionary with defaults passed to the context.
         self.context_settings = context_settings
 
-    def to_info_dict(self, ctx: Context) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self, ctx: Context) -> t.Dict[str, t.Any]:
         """Gather information that could be useful for a tool generating
         user-facing documentation. This traverses the entire structure
         below this command.
@@ -893,9 +893,9 @@ class BaseCommand:
     def make_context(
         self,
         info_name: str,
-        args: typing.List[str],
-        parent: typing.Optional[Context] = None,
-        **extra: typing.Any,
+        args: t.List[str],
+        parent: t.Optional[Context] = None,
+        **extra: t.Any,
     ) -> Context:
         """This function when given an info name and arguments will kick
         off the parsing and create a new :class:`Context`.  It does not
@@ -927,14 +927,14 @@ class BaseCommand:
             self.parse_args(ctx, args)
         return ctx
 
-    def parse_args(self, ctx: Context, args: typing.List[str]) -> typing.List[str]:
+    def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
         """Given a context and a list of arguments this creates the parser
         and parses the arguments, then modifies the context as necessary.
         This is automatically invoked by :meth:`make_context`.
         """
         raise NotImplementedError("Base commands do not know how to parse arguments.")
 
-    def invoke(self, ctx: Context) -> typing.NoReturn:
+    def invoke(self, ctx: Context) -> t.NoReturn:
         """Given a context, this invokes the command.  The default
         implementation is raising a not implemented error.
         """
@@ -942,7 +942,7 @@ class BaseCommand:
 
     def shell_complete(
         self, ctx: Context, incomplete: str
-    ) -> typing.List[shell_completion_t.CompletionItem]:
+    ) -> t.List[shell_completion_t.CompletionItem]:
         """Return a list of completions for the incomplete value. Looks
         at the names of chained multi-commands.
 
@@ -957,7 +957,7 @@ class BaseCommand:
         """
         from click.shell_completion import CompletionItem
 
-        results: typing.List[CompletionItem] = []
+        results: t.List[CompletionItem] = []
 
         while ctx.parent is not None:
             ctx = ctx.parent
@@ -973,11 +973,11 @@ class BaseCommand:
 
     def main(
         self,
-        args: typing.List[str] = None,
-        prog_name: typing.Optional[str] = None,
-        complete_var: typing.Optional[str] = None,
+        args: t.List[str] = None,
+        prog_name: t.Optional[str] = None,
+        complete_var: t.Optional[str] = None,
         standalone_mode: bool = True,
-        **extra: typing.Any,
+        **extra: t.Any,
     ) -> None:
         """This is the way to invoke a script with all the bells and
         whistles as a command line application.  This will always terminate
@@ -1029,7 +1029,7 @@ class BaseCommand:
         try:
             try:
                 with self.make_context(prog_name, args, **extra) as ctx:
-                    rv: typing.Any = self.invoke(ctx)
+                    rv: t.Any = self.invoke(ctx)
                     if not standalone_mode:
                         return rv
                     # it's not safe to `ctx.exit(rv)` here!
@@ -1050,11 +1050,11 @@ class BaseCommand:
                 sys.exit(e.exit_code)
             except OSError as e:
                 if e.errno == errno.EPIPE:
-                    sys.stdout = typing.cast(
-                        typing.TextIO, PacifyFlushWrapper(sys.stdout)
+                    sys.stdout = t.cast(
+                        t.TextIO, PacifyFlushWrapper(sys.stdout)
                     )
-                    sys.stderr = typing.cast(
-                        typing.TextIO, PacifyFlushWrapper(sys.stderr)
+                    sys.stderr = t.cast(
+                        t.TextIO, PacifyFlushWrapper(sys.stderr)
                     )
                     sys.exit(1)
                 else:
@@ -1080,9 +1080,9 @@ class BaseCommand:
 
     def _main_shell_completion(
         self,
-        ctx_args: typing.Dict[str, typing.Any],
+        ctx_args: t.Dict[str, t.Any],
         prog_name: str,
-        complete_var: typing.Optional[str] = None,
+        complete_var: t.Optional[str] = None,
     ) -> None:
         """Check if the shell is asking for tab completion, process
         that, then exit early. Called from :meth:`main` before the
@@ -1106,7 +1106,7 @@ class BaseCommand:
         rv = shell_complete(self, ctx_args, prog_name, complete_var, instruction)
         _fast_exit(rv)
 
-    def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+    def __call__(self, *args: t.Any, **kwargs: t.Any) -> None:
         """Alias for :meth:`main`."""
         return self.main(*args, **kwargs)
 
@@ -1147,18 +1147,18 @@ class Command(BaseCommand):
     """
 
     name: str
-    context_settings: typing.Dict[typing.Any, typing.Any]
-    callback: typing.Optional[typing.Callable[..., typing.Any]]
+    context_settings: t.Dict[t.Any, t.Any]
+    callback: t.Optional[t.Callable[..., t.Any]]
 
     def __init__(
         self,
         name: str,
-        context_settings: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        callback: typing.Optional[typing.Callable[..., typing.Any]] = None,
-        params: typing.Optional[typing.List["Parameter"]] = None,
-        help: typing.Optional[str] = None,
-        epilog: typing.Optional[str] = None,
-        short_help: typing.Optional[str] = None,
+        context_settings: t.Optional[t.Dict[str, t.Any]] = None,
+        callback: t.Optional[t.Callable[..., t.Any]] = None,
+        params: t.Optional[t.List["Parameter"]] = None,
+        help: t.Optional[str] = None,
+        epilog: t.Optional[str] = None,
+        short_help: t.Optional[str] = None,
         options_metavar: str = "[OPTIONS]",
         add_help_option: bool = True,
         no_args_is_help: bool = False,
@@ -1186,7 +1186,7 @@ class Command(BaseCommand):
         self.hidden = hidden
         self.deprecated = deprecated
 
-    def to_info_dict(self, ctx: Context) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self, ctx: Context) -> t.Dict[str, t.Any]:
         info_dict = super().to_info_dict(ctx)
         info_dict.update(
             params=[param.to_info_dict() for param in self.get_params(ctx)],
@@ -1210,7 +1210,7 @@ class Command(BaseCommand):
         self.format_usage(ctx, formatter)
         return formatter.getvalue().rstrip("\n")
 
-    def get_params(self, ctx: Context) -> typing.List["Parameter"]:
+    def get_params(self, ctx: Context) -> t.List["Parameter"]:
         rv = self.params
         help_option = self.get_help_option(ctx)
         if help_option is not None:
@@ -1225,7 +1225,7 @@ class Command(BaseCommand):
         pieces = self.collect_usage_pieces(ctx)
         formatter.write_usage(ctx.command_path, " ".join(pieces))
 
-    def collect_usage_pieces(self, ctx: Context) -> typing.List[str]:
+    def collect_usage_pieces(self, ctx: Context) -> t.List[str]:
         """Returns all the pieces that go into the usage line and returns
         it as a list of strings.
         """
@@ -1234,7 +1234,7 @@ class Command(BaseCommand):
             rv.extend(param.get_usage_pieces(ctx))
         return rv
 
-    def get_help_option_names(self, ctx: Context) -> typing.List[str]:
+    def get_help_option_names(self, ctx: Context) -> t.List[str]:
         """Returns the names for the help option."""
         all_names = set(ctx.help_option_names)
         for param in self.params:
@@ -1242,7 +1242,7 @@ class Command(BaseCommand):
             all_names.difference_update(param.secondary_opts)
         return all_names  # type: ignore
 
-    def get_help_option(self, ctx: Context) -> typing.Optional["Option"]:
+    def get_help_option(self, ctx: Context) -> t.Optional["Option"]:
         """Returns the help option object."""
         help_options = self.get_help_option_names(ctx)
         if not help_options or not self.add_help_option:
@@ -1339,7 +1339,7 @@ class Command(BaseCommand):
             with formatter.indentation():
                 formatter.write_text(self.epilog)
 
-    def parse_args(self, ctx: Context, args: typing.List[str]) -> typing.List[str]:
+    def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
         if not args and self.no_args_is_help and not ctx.resilient_parsing:
             echo(ctx.get_help(), color=ctx.color)
             ctx.exit()
@@ -1360,7 +1360,7 @@ class Command(BaseCommand):
         ctx.args = args
         return args
 
-    def invoke(self, ctx: Context) -> typing.Any:
+    def invoke(self, ctx: Context) -> t.Any:
         """Given a context, this invokes the attached callback (if it exists)
         in the right way.
         """
@@ -1370,7 +1370,7 @@ class Command(BaseCommand):
 
     def shell_complete(
         self, ctx: Context, incomplete: str
-    ) -> typing.List[shell_completion_t.CompletionItem]:
+    ) -> t.List[shell_completion_t.CompletionItem]:
         """Return a list of completions for the incomplete value. Looks
         at the names of options and chained multi-commands.
 
@@ -1381,7 +1381,7 @@ class Command(BaseCommand):
         """
         from click.shell_completion import CompletionItem
 
-        results: typing.List[CompletionItem] = []
+        results: t.List[CompletionItem] = []
 
         if incomplete and not incomplete[0].isalnum():
             for param in self.get_params(ctx):
@@ -1434,18 +1434,18 @@ class MultiCommand(Command):
     allow_interspersed_args = False
 
     chain: bool
-    result_callback: typing.Optional[typing.Callable[..., typing.Any]]
+    result_callback: t.Optional[t.Callable[..., t.Any]]
     invoke_without_command: bool
 
     def __init__(
         self,
-        name: typing.Optional[str] = None,  # FIXME: don't allow None
+        name: t.Optional[str] = None,  # FIXME: don't allow None
         invoke_without_command: bool = False,
-        no_args_is_help: typing.Optional[bool] = None,
-        subcommand_metavar: typing.Optional[str] = None,
+        no_args_is_help: t.Optional[bool] = None,
+        subcommand_metavar: t.Optional[str] = None,
         chain: bool = False,
-        result_callback: typing.Optional[typing.Callable[..., typing.Any]] = None,
-        **attrs: typing.Any,
+        result_callback: t.Optional[t.Callable[..., t.Any]] = None,
+        **attrs: t.Any,
     ):
         super().__init__(name, **attrs)  # type: ignore
         if no_args_is_help is None:
@@ -1471,12 +1471,12 @@ class MultiCommand(Command):
                         " optional arguments."
                     )
 
-    def to_info_dict(self, ctx: Context) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self, ctx: Context) -> t.Dict[str, t.Any]:
         info_dict = super().to_info_dict(ctx)
         commands = {}
 
         for name in self.list_commands(ctx):
-            command = typing.cast(Command, self.get_command(ctx, name))
+            command = t.cast(Command, self.get_command(ctx, name))
             sub_ctx = ctx._make_sub_context(command)
 
             with sub_ctx.scope(cleanup=False):
@@ -1485,7 +1485,7 @@ class MultiCommand(Command):
         info_dict.update(commands=commands, chain=self.chain)
         return info_dict
 
-    def collect_usage_pieces(self, ctx: Context) -> typing.List[str]:
+    def collect_usage_pieces(self, ctx: Context) -> t.List[str]:
         rv = super().collect_usage_pieces(ctx)
         rv.append(self.subcommand_metavar)
         return rv
@@ -1494,7 +1494,7 @@ class MultiCommand(Command):
         super().format_options(ctx, formatter)
         self.format_commands(ctx, formatter)
 
-    def resultcallback(self, replace: bool = False) -> typing.Callable[..., typing.Any]:
+    def resultcallback(self, replace: bool = False) -> t.Callable[..., t.Any]:
         """Adds a result callback to the command.  By default if a
         result callback is already registered this will chain them but
         this can be disabled with the `replace` parameter.  The result
@@ -1521,16 +1521,16 @@ class MultiCommand(Command):
         """
 
         def decorator(
-            f: typing.Callable[..., typing.Any]
-        ) -> typing.Callable[..., typing.Any]:
+            f: t.Callable[..., t.Any]
+        ) -> t.Callable[..., t.Any]:
             old_callback = self.result_callback
             if old_callback is None or replace:
                 self.result_callback = f
                 return f
 
             def function(
-                __value: typing.Any, *args: typing.Any, **kwargs: typing.Any
-            ) -> typing.Any:
+                __value: t.Any, *args: t.Any, **kwargs: t.Any
+            ) -> t.Any:
                 return f(old_callback(__value, *args, **kwargs), *args, **kwargs)  # type: ignore
 
             self.result_callback = rv = update_wrapper(function, f)
@@ -1566,7 +1566,7 @@ class MultiCommand(Command):
                 with formatter.section("Commands"):
                     formatter.write_dl(rows)
 
-    def parse_args(self, ctx: Context, args: typing.List[str]) -> typing.List[str]:
+    def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
         if not args and self.no_args_is_help and not ctx.resilient_parsing:
             echo(ctx.get_help(), color=ctx.color)
             ctx.exit()
@@ -1581,9 +1581,9 @@ class MultiCommand(Command):
 
         return ctx.args
 
-    def invoke(self, ctx: Context) -> typing.Any:
+    def invoke(self, ctx: Context) -> t.Any:
         # TODO: FIXME
-        def _process_result(value: typing.Any) -> typing.Any:
+        def _process_result(value: t.Any) -> t.Any:
             if self.result_callback is not None:
                 value = ctx.invoke(self.result_callback, value, **ctx.params)
             return value
@@ -1642,15 +1642,15 @@ class MultiCommand(Command):
                 contexts.append(sub_ctx)
                 args, sub_ctx.args = sub_ctx.args, []
 
-            rv: typing.List[typing.Any] = []
+            rv: t.List[t.Any] = []
             for sub_ctx in contexts:
                 with sub_ctx:
                     rv.append(sub_ctx.command.invoke(sub_ctx))
             return _process_result(rv)
 
     def resolve_command(
-        self, ctx: Context, args: typing.List[str]
-    ) -> typing.Tuple[str, Command, typing.List[str]]:
+        self, ctx: Context, args: t.List[str]
+    ) -> t.Tuple[str, Command, t.List[str]]:
         cmd_name = make_str(args[0])
         original_cmd_name = cmd_name
 
@@ -1675,13 +1675,13 @@ class MultiCommand(Command):
             ctx.fail(f"No such command '{original_cmd_name}'.")
         return cmd.name if cmd else None, cmd, args[1:]  # type: ignore
 
-    def get_command(self, ctx: Context, cmd_name: str) -> typing.Optional[Command]:
+    def get_command(self, ctx: Context, cmd_name: str) -> t.Optional[Command]:
         """Given a context and a command name, this returns a
         :class:`Command` object if it exists or returns `None`.
         """
         raise NotImplementedError()
 
-    def list_commands(self, ctx: Context) -> typing.List[str]:
+    def list_commands(self, ctx: Context) -> t.List[str]:
         """Returns a list of subcommand names in the order they should
         appear.
         """
@@ -1689,7 +1689,7 @@ class MultiCommand(Command):
 
     def shell_complete(
         self, ctx: Context, incomplete: str
-    ) -> typing.List[shell_completion_t.CompletionItem]:
+    ) -> t.List[shell_completion_t.CompletionItem]:
         """Return a list of completions for the incomplete value. Looks
         at the names of options, subcommands, and chained
         multi-commands.
@@ -1746,9 +1746,9 @@ class Group(MultiCommand):
 
     def __init__(
         self,
-        name: typing.Optional[str] = None,
-        commands: typing.Optional[typing.Dict[str, Command]] = None,
-        **attrs: typing.Any,
+        name: t.Optional[str] = None,
+        commands: t.Optional[t.Dict[str, Command]] = None,
+        **attrs: t.Any,
     ):
         super().__init__(name, **attrs)
 
@@ -1760,7 +1760,7 @@ class Group(MultiCommand):
         #: The registered subcommands by their exported names.
         self.commands = commands
 
-    def add_command(self, cmd: Command, name: typing.Optional[str] = None) -> None:
+    def add_command(self, cmd: Command, name: t.Optional[str] = None) -> None:
         """Registers another :class:`Command` with this group.  If the name
         is not provided, the name of the command is used.
         """
@@ -1771,8 +1771,8 @@ class Group(MultiCommand):
         self.commands[name] = cmd
 
     def command(
-        self, *args: typing.Any, **kwargs: typing.Any
-    ) -> typing.Callable[[typing.Callable[..., typing.Any]], typing.Any]:
+        self, *args: t.Any, **kwargs: t.Any
+    ) -> t.Callable[[t.Callable[..., t.Any]], t.Any]:
         """A shortcut decorator for declaring and attaching a command to
         the group. This takes the same arguments as :func:`command` and
         immediately registers the created command with this group by
@@ -1790,8 +1790,8 @@ class Group(MultiCommand):
             kwargs["cls"] = self.command_class
 
         def decorator(
-            f: typing.Callable[..., typing.Any]
-        ) -> typing.Callable[..., typing.Any]:
+            f: t.Callable[..., t.Any]
+        ) -> t.Callable[..., t.Any]:
             cmd = command(*args, **kwargs)(f)
             self.add_command(cmd)
             return cmd
@@ -1799,8 +1799,8 @@ class Group(MultiCommand):
         return decorator
 
     def group(
-        self, *args: typing.Any, **kwargs: typing.Any
-    ) -> typing.Callable[[typing.Callable[..., typing.Any]], typing.Any]:
+        self, *args: t.Any, **kwargs: t.Any
+    ) -> t.Callable[[t.Callable[..., t.Any]], t.Any]:
         """A shortcut decorator for declaring and attaching a group to
         the group. This takes the same arguments as :func:`group` and
         immediately registers the created group with this group by
@@ -1821,18 +1821,18 @@ class Group(MultiCommand):
                 kwargs["cls"] = self.group_class
 
         def decorator(
-            f: typing.Callable[..., typing.Any]
-        ) -> typing.Callable[..., typing.Any]:
+            f: t.Callable[..., t.Any]
+        ) -> t.Callable[..., t.Any]:
             cmd = group(*args, **kwargs)(f)
             self.add_command(cmd)
             return cmd
 
         return decorator
 
-    def get_command(self, ctx: Context, cmd_name: str) -> typing.Optional[Command]:
+    def get_command(self, ctx: Context, cmd_name: str) -> t.Optional[Command]:
         return self.commands.get(cmd_name)
 
-    def list_commands(self, ctx: Context) -> typing.List[str]:
+    def list_commands(self, ctx: Context) -> t.List[str]:
         return sorted(self.commands)
 
 
@@ -1846,8 +1846,8 @@ class CommandCollection(MultiCommand):
     def __init__(
         self,
         name: str = None,
-        sources: typing.List[MultiCommand] = None,
-        **attrs: typing.Any,
+        sources: t.List[MultiCommand] = None,
+        **attrs: t.Any,
     ):
         super().__init__(name, **attrs)
         #: The list of registered multi commands.
@@ -1865,7 +1865,7 @@ class CommandCollection(MultiCommand):
                     _check_multicommand(self, cmd_name, rv)
                 return rv
 
-    def list_commands(self, ctx: Context) -> typing.List[str]:
+    def list_commands(self, ctx: Context) -> t.List[str]:
         rv = set()
         for source in self.sources:
             rv.update(source.list_commands(ctx))
@@ -1947,27 +1947,27 @@ class Parameter:
 
     def __init__(
         self,
-        param_decls: typing.Optional[typing.List[str]] = None,
-        type: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]] = None,
+        param_decls: t.Optional[t.List[str]] = None,
+        type: t.Optional[t.Union[t.Type[t.Any], ParamType]] = None,
         required: bool = False,
-        default: typing.Any = None,
-        callback: typing.Callable[
-            [Context, "Parameter", typing.Any], typing.Any
+        default: t.Any = None,
+        callback: t.Callable[
+            [Context, "Parameter", t.Any], t.Any
         ] = None,
-        nargs: typing.Optional[int] = None,
-        metavar: typing.Optional[str] = None,
+        nargs: t.Optional[int] = None,
+        metavar: t.Optional[str] = None,
         expose_value: bool = True,
         is_eager: bool = False,
-        envvar: typing.Optional[typing.Union[typing.List[str], str]] = None,
-        shell_complete: typing.Optional[
-            typing.Callable[
+        envvar: t.Optional[t.Union[t.List[str], str]] = None,
+        shell_complete: t.Optional[
+            t.Callable[
                 [Context, "Parameter", str],
-                typing.List[typing.Union[shell_completion_t.CompletionItem, str]],
+                t.List[t.Union[shell_completion_t.CompletionItem, str]],
             ]
         ] = None,
         autocompletion: None = None,
     ):
-        if typing.TYPE_CHECKING:
+        if t.TYPE_CHECKING:
             assert isinstance(self, (Option, Argument))
         self.name, self.opts, self.secondary_opts = self._parse_decls(
             param_decls or (), expose_value
@@ -1979,7 +1979,7 @@ class Parameter:
         # information available.
         if nargs is None:
             if self.type.is_composite:
-                nargs = typing.cast(CompositeParamType, self.type).arity
+                nargs = t.cast(CompositeParamType, self.type).arity
             else:
                 nargs = 1
 
@@ -2022,7 +2022,7 @@ class Parameter:
 
         self._custom_shell_complete = shell_complete
 
-    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self) -> t.Dict[str, t.Any]:
         """Gather information that could be useful for a tool generating
         user-facing documentation.
 
@@ -2048,7 +2048,7 @@ class Parameter:
         return f"<{self.__class__.__name__} {self.name}>"
 
     @property
-    def human_readable_name(self) -> typing.Optional[str]:
+    def human_readable_name(self) -> t.Optional[str]:
         """Returns the human readable name of this parameter.  This is the
         same as the name for options, but the metavar for arguments.
         """
@@ -2064,7 +2064,7 @@ class Parameter:
             metavar += "..."
         return metavar
 
-    def get_default(self, ctx: Context, call: bool = True) -> typing.Any:
+    def get_default(self, ctx: Context, call: bool = True) -> t.Any:
         """Get the default for the parameter. Tries
         :meth:`Context.lookup_value` first, then the local default.
 
@@ -2096,8 +2096,8 @@ class Parameter:
         pass
 
     def consume_value(
-        self, ctx: Context, opts: typing.Dict[str, typing.Any]
-    ) -> typing.Tuple[typing.Any, ParameterSource]:
+        self, ctx: Context, opts: t.Dict[str, t.Any]
+    ) -> t.Tuple[t.Any, ParameterSource]:
         value = opts.get(self.name)
         source = ParameterSource.COMMANDLINE
 
@@ -2115,7 +2115,7 @@ class Parameter:
 
         return value, source
 
-    def type_cast_value(self, ctx: Context, value: str) -> typing.Any:
+    def type_cast_value(self, ctx: Context, value: str) -> t.Any:
         """Given a value this runs it properly through the type system.
         This automatically handles things like `nargs` and `multiple` as
         well as composite types.
@@ -2136,7 +2136,7 @@ class Parameter:
 
             return self.type(value, self, ctx)
 
-        def _convert(value: str, level: int) -> typing.Any:
+        def _convert(value: str, level: int) -> t.Any:
             if level == 0:
                 return self.type(value, self, ctx)
 
@@ -2144,7 +2144,7 @@ class Parameter:
 
         return _convert(value, (self.nargs != 1) + bool(self.multiple))
 
-    def process_value(self, ctx: Context, value: str) -> typing.Any:
+    def process_value(self, ctx: Context, value: str) -> t.Any:
         """Given a value and context this runs the logic to convert the
         value as necessary.
         """
@@ -2155,14 +2155,14 @@ class Parameter:
         if value is not None:
             return self.type_cast_value(ctx, value)
 
-    def value_is_missing(self, value: typing.Any) -> bool:
+    def value_is_missing(self, value: t.Any) -> bool:
         if value is None:
             return True
         if (self.nargs != 1 or self.multiple) and value == ():
             return True
         return False
 
-    def full_process_value(self, ctx: Context, value: typing.Any) -> typing.Any:
+    def full_process_value(self, ctx: Context, value: t.Any) -> t.Any:
         value = self.process_value(ctx, value)
 
         if self.required and self.value_is_missing(value):
@@ -2187,7 +2187,7 @@ class Parameter:
 
         return value
 
-    def resolve_envvar_value(self, ctx: Context) -> typing.Optional[str]:
+    def resolve_envvar_value(self, ctx: Context) -> t.Optional[str]:
         if self.envvar is None:
             return None
 
@@ -2205,19 +2205,19 @@ class Parameter:
 
     def value_from_envvar(
         self, ctx: Context
-    ) -> typing.Optional[typing.Union[str, typing.List[str]]]:
-        rv: typing.Optional[
-            typing.Union[str, typing.List[str]]
+    ) -> t.Optional[t.Union[str, t.List[str]]]:
+        rv: t.Optional[
+            t.Union[str, t.List[str]]
         ] = self.resolve_envvar_value(ctx)
 
         if rv is not None and self.nargs != 1:
-            rv = self.type.split_envvar_value(typing.cast(str, rv))
+            rv = self.type.split_envvar_value(t.cast(str, rv))
 
         return rv
 
     def handle_parse_result(
-        self, ctx: Context, opts: typing.Dict[str, typing.Any], args: typing.List[str]
-    ) -> typing.Tuple[typing.Any, typing.List[str]]:
+        self, ctx: Context, opts: t.Dict[str, t.Any], args: t.List[str]
+    ) -> t.Tuple[t.Any, t.List[str]]:
         with augment_usage_errors(ctx, param=self):
             value, source = self.consume_value(ctx, opts)
             ctx.set_parameter_source(self.name, source)
@@ -2238,24 +2238,24 @@ class Parameter:
 
         return value, args
 
-    def get_help_record(self, ctx: Context) -> typing.Optional[typing.Tuple[str, str]]:
+    def get_help_record(self, ctx: Context) -> t.Optional[t.Tuple[str, str]]:
         pass
 
-    def get_usage_pieces(self, ctx: Context) -> typing.List[str]:
+    def get_usage_pieces(self, ctx: Context) -> t.List[str]:
         return []
 
     def get_error_hint(self, ctx: Context) -> str:
         """Get a stringified version of the param for use in error messages to
         indicate which param caused the error.
         """
-        hint_list = typing.cast(typing.List[typing.Any], self.opts) or [
+        hint_list = t.cast(t.List[t.Any], self.opts) or [
             self.human_readable_name
         ]
         return " / ".join(repr(x) for x in hint_list)
 
     def shell_complete(
         self, ctx: Context, incomplete: str
-    ) -> typing.Sequence[typing.Union[shell_completion_t.CompletionItem, str]]:
+    ) -> t.Sequence[t.Union[shell_completion_t.CompletionItem, str]]:
         """Return a list of completions for the incomplete value. If a
         ``shell_complete`` function was given during init, it is used.
         Otherwise, the :attr:`type`
@@ -2322,46 +2322,46 @@ class Option(Parameter):
     """
 
     param_type_name = "option"
-    prompt: typing.Optional[str]
+    prompt: t.Optional[str]
     confirmation_prompt: bool
     prompt_required: bool
     hide_input: bool
     is_flag: bool
-    flag_value: typing.Any
+    flag_value: t.Any
     hidden: bool
 
     _flag_needs_value: bool
 
     def __init__(
         self,
-        param_decls: typing.Optional[typing.List[str]] = None,
+        param_decls: t.Optional[t.List[str]] = None,
         show_default: bool = False,
-        prompt: typing.Union[bool, str] = False,
+        prompt: t.Union[bool, str] = False,
         confirmation_prompt: bool = False,
         prompt_required: bool = True,
         hide_input: bool = False,
-        is_flag: typing.Optional[bool] = None,
-        flag_value: typing.Optional[typing.Any] = None,
+        is_flag: t.Optional[bool] = None,
+        flag_value: t.Optional[t.Any] = None,
         multiple: bool = False,
         count: bool = False,
         allow_from_autoenv: bool = True,
-        type: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]] = None,
-        help: typing.Optional[str] = None,
+        type: t.Optional[t.Union[t.Type[t.Any], ParamType]] = None,
+        help: t.Optional[str] = None,
         hidden: bool = False,
         show_choices: bool = True,
         show_envvar: bool = False,
-        **attrs: typing.Any,
+        **attrs: t.Any,
     ):
         default_is_missing = attrs.get("default", _missing) is _missing
         super().__init__(param_decls, type=type, **attrs)
 
-        prompt_text: typing.Optional[str]
+        prompt_text: t.Optional[str]
         if prompt is True:
             prompt_text = self.name.replace("_", " ").capitalize()
         elif prompt is False:
             prompt_text = None
         else:
-            prompt_text = typing.cast(str, prompt)
+            prompt_text = t.cast(str, prompt)
         self.prompt = prompt_text
         self.confirmation_prompt = confirmation_prompt
         self.prompt_required = prompt_required
@@ -2437,7 +2437,7 @@ class Option(Parameter):
                         "Options cannot be count and flags at the same time."
                     )
 
-    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self) -> t.Dict[str, t.Any]:
         info_dict = super().to_info_dict()
         info_dict.update(
             help=self.help,
@@ -2450,8 +2450,8 @@ class Option(Parameter):
         return info_dict
 
     def _parse_decls(
-        self, decls: typing.Sequence[str], expose_value: bool
-    ) -> typing.Tuple[str, typing.List[str], typing.List[str]]:
+        self, decls: t.Sequence[str], expose_value: bool
+    ) -> t.Tuple[str, t.List[str], t.List[str]]:
         opts = []
         secondary_opts = []
         name = None
@@ -2503,7 +2503,7 @@ class Option(Parameter):
         return name, opts, secondary_opts
 
     def add_to_parser(self, parser: OptionParser, ctx: Context) -> None:
-        kwargs: typing.Dict[str, typing.Any] = {
+        kwargs: t.Dict[str, t.Any] = {
             "dest": self.name,
             "nargs": self.nargs,
             "obj": self,
@@ -2532,12 +2532,12 @@ class Option(Parameter):
             kwargs["action"] = action
             parser.add_option(self.opts, **kwargs)
 
-    def get_help_record(self, ctx: Context) -> typing.Optional[typing.Tuple[str, str]]:
+    def get_help_record(self, ctx: Context) -> t.Optional[t.Tuple[str, str]]:
         if self.hidden:
             return None
-        any_prefix_is_slash: typing.List[bool] = []
+        any_prefix_is_slash: t.List[bool] = []
 
-        def _write_opts(opts: typing.List[str]) -> str:
+        def _write_opts(opts: t.List[str]) -> str:
             rv, any_slashes = join_options(opts)
             if any_slashes:
                 any_prefix_is_slash[:] = [True]
@@ -2598,13 +2598,13 @@ class Option(Parameter):
 
         return ("; " if any_prefix_is_slash else " / ").join(rv), help
 
-    def get_default(self, ctx: Context, call: bool = True) -> typing.Any:
+    def get_default(self, ctx: Context, call: bool = True) -> t.Any:
         # If we're a non boolean flag our default is more complex because
         # we need to look at all flags in the same group to figure out
         # if we're the the default one in which case we return the flag
         # value as default.
         if self.is_flag and not self.is_bool_flag:
-            for param in typing.cast(Command, ctx.command).params:
+            for param in t.cast(Command, ctx.command).params:
                 if param.name == self.name and param.default:
                     return param.flag_value  # type: ignore
 
@@ -2612,7 +2612,7 @@ class Option(Parameter):
 
         return super().get_default(ctx, call=call)
 
-    def prompt_for_value(self, ctx: Context) -> typing.Any:
+    def prompt_for_value(self, ctx: Context) -> t.Any:
         """This is an alternative flow that can be activated in the full
         value processing if a value does not exist.  It will prompt the
         user until a valid value exists and then returns the processed
@@ -2621,7 +2621,7 @@ class Option(Parameter):
         # Calculate the default before prompting anything to be stable.
         default = self.get_default(ctx)
 
-        if typing.TYPE_CHECKING:
+        if t.TYPE_CHECKING:
             assert self.prompt is not None
         # If this is a prompt for a flag we need to handle this
         # differently.
@@ -2638,7 +2638,7 @@ class Option(Parameter):
             value_proc=lambda x: self.process_value(ctx, x),
         )
 
-    def resolve_envvar_value(self, ctx: Context) -> typing.Optional[str]:
+    def resolve_envvar_value(self, ctx: Context) -> t.Optional[str]:
         rv = super().resolve_envvar_value(ctx)
 
         if rv is not None:
@@ -2653,9 +2653,9 @@ class Option(Parameter):
 
     def value_from_envvar(
         self, ctx: Context
-    ) -> typing.Optional[typing.Union[str, typing.List[str]]]:
-        rv: typing.Optional[
-            typing.Union[str, typing.List[str]]
+    ) -> t.Optional[t.Union[str, t.List[str]]]:
+        rv: t.Optional[
+            t.Union[str, t.List[str]]
         ] = self.resolve_envvar_value(ctx)
 
         if rv is None:
@@ -2664,7 +2664,7 @@ class Option(Parameter):
         value_depth = (self.nargs != 1) + bool(self.multiple)
 
         if value_depth > 0 and rv is not None:
-            rv = self.type.split_envvar_value(typing.cast(str, rv))
+            rv = self.type.split_envvar_value(t.cast(str, rv))
 
             if self.multiple and self.nargs != 1:
                 rv = batch(rv, self.nargs)  # type: ignore
@@ -2672,8 +2672,8 @@ class Option(Parameter):
         return rv
 
     def consume_value(
-        self, ctx: Context, opts: typing.Dict[str, typing.Any]
-    ) -> typing.Tuple[typing.Any, ParameterSource]:
+        self, ctx: Context, opts: t.Dict[str, t.Any]
+    ) -> t.Tuple[t.Any, ParameterSource]:
         value, source = super().consume_value(ctx, opts)
 
         # The parser will emit a sentinel value if the option can be
@@ -2713,9 +2713,9 @@ class Argument(Parameter):
 
     def __init__(
         self,
-        param_decls: typing.Optional[typing.List[str]],
-        required: typing.Optional[bool] = None,
-        **attrs: typing.Any,
+        param_decls: t.Optional[t.List[str]],
+        required: t.Optional[bool] = None,
+        **attrs: t.Any,
     ):
         if required is None:
             if attrs.get("default") is not None:
@@ -2749,8 +2749,8 @@ class Argument(Parameter):
         return var
 
     def _parse_decls(
-        self, decls: typing.Sequence[str], expose_value: bool
-    ) -> typing.Tuple[str, typing.List[str], typing.List[str]]:
+        self, decls: t.Sequence[str], expose_value: bool
+    ) -> t.Tuple[str, t.List[str], t.List[str]]:
         if not decls:
             if not expose_value:
                 return None, [], []  # type: ignore
@@ -2765,7 +2765,7 @@ class Argument(Parameter):
             )
         return name, [arg], []
 
-    def get_usage_pieces(self, ctx: Context) -> typing.List[str]:
+    def get_usage_pieces(self, ctx: Context) -> t.List[str]:
         return [self.make_metavar()]
 
     def get_error_hint(self, ctx: Context) -> str:

@@ -21,7 +21,7 @@ Copyright 2002-2006 Python Software Foundation. All rights reserved.
 # maintained by the Python Software Foundation.
 # Copyright 2001-2006 Gregory P. Ward
 # Copyright 2002-2006 Python Software Foundation
-import typing
+import typing as t
 from collections import deque
 
 from .exceptions import BadArgumentUsage
@@ -29,10 +29,10 @@ from .exceptions import BadOptionUsage
 from .exceptions import NoSuchOption
 from .exceptions import UsageError
 
-if typing.TYPE_CHECKING:
+if t.TYPE_CHECKING:
     from . import core as core_t
 
-GenericT = typing.TypeVar("GenericT")
+GenericT = t.TypeVar("GenericT")
 
 # Sentinel value that indicates an option was passed as a flag without a
 # value but is not a flag option. Option.consume_value uses this to
@@ -40,7 +40,7 @@ GenericT = typing.TypeVar("GenericT")
 _flag_needs_value = object()
 
 
-def _unpack_args(args: typing.Iterable[str], nargs_spec: typing.Iterable[int]):
+def _unpack_args(args: t.Iterable[str], nargs_spec: t.Iterable[int]):
     """Given an iterable of arguments and an iterable of nargs specifications,
     it returns a tuple with all the unpacked arguments at the first index
     and all remaining arguments as the second.
@@ -52,10 +52,10 @@ def _unpack_args(args: typing.Iterable[str], nargs_spec: typing.Iterable[int]):
     """
     args = deque(args)
     nargs_spec = deque(nargs_spec)
-    rv: typing.List[typing.Any] = []
+    rv: t.List[t.Any] = []
     spos = None
 
-    def _fetch(c: typing.Deque[GenericT]) -> typing.Optional[GenericT]:
+    def _fetch(c: t.Deque[GenericT]) -> t.Optional[GenericT]:
         try:
             if spos is None:
                 return c.popleft()
@@ -65,7 +65,7 @@ def _unpack_args(args: typing.Iterable[str], nargs_spec: typing.Iterable[int]):
             return None
 
     while nargs_spec:
-        nargs = typing.cast(int, _fetch(nargs_spec))
+        nargs = t.cast(int, _fetch(nargs_spec))
         if nargs == 1:
             rv.append(_fetch(args))
         elif nargs > 1:
@@ -91,7 +91,7 @@ def _unpack_args(args: typing.Iterable[str], nargs_spec: typing.Iterable[int]):
     return tuple(rv), list(args)
 
 
-def split_opt(opt: str) -> typing.Tuple[str, str]:
+def split_opt(opt: str) -> t.Tuple[str, str]:
     first = opt[:1]
     if first.isalnum():
         return "", opt
@@ -100,14 +100,14 @@ def split_opt(opt: str) -> typing.Tuple[str, str]:
     return first, opt[1:]
 
 
-def normalize_opt(opt: str, ctx: typing.Optional[core_t.Context]) -> str:
+def normalize_opt(opt: str, ctx: t.Optional[core_t.Context]) -> str:
     if ctx is None or ctx.token_normalize_func is None:
         return opt
     prefix, opt = split_opt(opt)
     return f"{prefix}{ctx.token_normalize_func(opt)}"
 
 
-def split_arg_string(string: str) -> typing.List[str]:
+def split_arg_string(string: str) -> t.List[str]:
     """Split an argument string as with :func:`shlex.split`, but don't
     fail if the string is incomplete. Ignores a missing closing quote or
     incomplete escape sequence and uses the partial token as-is.
@@ -142,21 +142,21 @@ def split_arg_string(string: str) -> typing.List[str]:
 
 
 class Option:
-    opts: typing.List[str]
+    opts: t.List[str]
     dest: str
-    action: typing.Optional[str]
+    action: t.Optional[str]
     nargs: int
-    const: typing.Optional[str]
-    obj: typing.Optional[str]
+    const: t.Optional[str]
+    obj: t.Optional[str]
 
     def __init__(
         self,
-        opts: typing.List[str],
+        opts: t.List[str],
         dest: str,
-        action: typing.Optional[str] = None,
+        action: t.Optional[str] = None,
         nargs: int = 1,
-        const: typing.Optional[str] = None,
-        obj: typing.Optional[str] = None,
+        const: t.Optional[str] = None,
+        obj: t.Optional[str] = None,
     ):
         self._short_opts = []
         self._long_opts = []
@@ -226,12 +226,12 @@ class Argument:
 
 
 class ParsingState:
-    opts: typing.Dict[str, typing.Any]
-    largs: typing.List[str]
-    rargs: typing.List[str]
-    order: typing.List[core_t.Parameter]
+    opts: t.Dict[str, t.Any]
+    largs: t.List[str]
+    rargs: t.List[str]
+    order: t.List[core_t.Parameter]
 
-    def __init__(self, rargs: typing.List[str]):
+    def __init__(self, rargs: t.List[str]):
         self.opts = {}
         self.largs = []
         self.rargs = rargs
@@ -252,12 +252,12 @@ class OptionParser:
                 should go with.
     """
 
-    _short_opt: typing.Dict[str, Option]
-    _long_opt: typing.Dict[str, Option]
-    _opt_prefixes: typing.Set[str]
-    _args: typing.List[Argument]
+    _short_opt: t.Dict[str, Option]
+    _long_opt: t.Dict[str, Option]
+    _opt_prefixes: t.Set[str]
+    _args: t.List[Argument]
 
-    def __init__(self, ctx: typing.Optional[core_t.Context] = None):
+    def __init__(self, ctx: t.Optional[core_t.Context] = None):
         #: The :class:`~click.Context` for this parser.  This might be
         #: `None` for some advanced use cases.
         self.ctx = ctx
@@ -283,7 +283,7 @@ class OptionParser:
         self,
         opts,
         dest: str,
-        action: typing.Optional[str] = None,
+        action: t.Optional[str] = None,
         nargs: int = 1,
         const=None,
         obj=None,
@@ -317,9 +317,9 @@ class OptionParser:
         self._args.append(Argument(dest=dest, nargs=nargs, obj=obj))
 
     def parse_args(
-        self, args: typing.List[str]
-    ) -> typing.Tuple[
-        typing.Dict[str, typing.Any], typing.List[str], typing.List[core_t.Parameter]
+        self, args: t.List[str]
+    ) -> t.Tuple[
+        t.Dict[str, t.Any], t.List[str], t.List[core_t.Parameter]
     ]:
         """Parses positional arguments and returns ``(values, args, order)``
         for the parsed options and arguments as well as the leftover

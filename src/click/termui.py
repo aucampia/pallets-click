@@ -4,7 +4,7 @@ import itertools
 import os
 import struct
 import sys
-import typing
+import typing as t
 
 from ._compat import DEFAULT_COLUMNS
 from ._compat import get_winterm_size
@@ -23,7 +23,7 @@ from .utils import LazyFile
 
 # The prompt functions to use.  The doc tools currently override these
 # functions to customize how they work.
-visible_prompt_func: typing.Callable[[str], str] = input
+visible_prompt_func: t.Callable[[str], str] = input
 
 _ansi_colors = {
     "black": 30,
@@ -57,9 +57,9 @@ def _build_prompt(
     text: str,
     suffix: str,
     show_default: bool = False,
-    default: typing.Any = None,
+    default: t.Any = None,
     show_choices: bool = True,
-    type: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]] = None,
+    type: t.Optional[t.Union[t.Type[t.Any], ParamType]] = None,
 ) -> str:
     prompt = text
     if type is not None and show_choices and isinstance(type, Choice):
@@ -69,7 +69,7 @@ def _build_prompt(
     return f"{prompt}{suffix}"
 
 
-def _format_default(default: typing.Any) -> typing.Any:
+def _format_default(default: t.Any) -> t.Any:
     if isinstance(default, (io.IOBase, LazyFile)) and hasattr(default, "name"):
         return default.name  # type: ignore
 
@@ -78,16 +78,16 @@ def _format_default(default: typing.Any) -> typing.Any:
 
 def prompt(
     text: str,
-    default: typing.Optional[str] = None,
+    default: t.Optional[str] = None,
     hide_input: bool = False,
     confirmation_prompt: bool = False,
-    type: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]] = None,
-    value_proc: typing.Optional[typing.Callable[[typing.Any], typing.Any]] = None,
+    type: t.Optional[t.Union[t.Type[t.Any], ParamType]] = None,
+    value_proc: t.Optional[t.Callable[[t.Any], t.Any]] = None,
     prompt_suffix: str = ": ",
     show_default: bool = True,
     err: bool = False,
     show_choices: bool = True,
-) -> typing.Any:
+) -> t.Any:
     """Prompts a user for input.  This is a convenience function that can
     be used to prompt a user for input later.
 
@@ -125,7 +125,7 @@ def prompt(
     result = None
 
     def prompt_func(text: str) -> str:
-        f: typing.Callable[[str], str] = (
+        f: t.Callable[[str], str] = (
             hidden_prompt_func if hide_input else visible_prompt_func
         )
         try:
@@ -226,7 +226,7 @@ def confirm(
     return rv
 
 
-def get_terminal_size() -> typing.Tuple[int, int]:
+def get_terminal_size() -> t.Tuple[int, int]:
     """Returns the current size of the terminal as tuple in the form
     ``(width, height)`` in columns and rows.
     """
@@ -270,8 +270,8 @@ def get_terminal_size() -> typing.Tuple[int, int]:
 
 
 def echo_via_pager(
-    text_or_generator: typing.Union[
-        str, typing.Callable[[], typing.Generator[str, typing.Any, typing.Any]]
+    text_or_generator: t.Union[
+        str, t.Callable[[], t.Generator[str, t.Any, t.Any]]
     ],
     color=None,
 ):
@@ -288,11 +288,11 @@ def echo_via_pager(
     """
     color = resolve_color_default(color)
 
-    # i: typing.Union[typing.Iterable[str], typing.Iterator[str]]
-    i: typing.Iterable[str]
+    # i: t.Union[t.Iterable[str], t.Iterator[str]]
+    i: t.Iterable[str]
     if inspect.isgeneratorfunction(text_or_generator):
-        i = typing.cast(
-            typing.Callable[[], typing.Generator[str, typing.Any, typing.Any]],
+        i = t.cast(
+            t.Callable[[], t.Generator[str, t.Any, t.Any]],
             text_or_generator,
         )()
     elif isinstance(text_or_generator, str):
@@ -469,7 +469,7 @@ def clear() -> None:
 
 
 def _interpret_color(
-    color: typing.Union[int, typing.Tuple, typing.List], offset: int = 0
+    color: t.Union[int, t.Tuple, t.List], offset: int = 0
 ) -> str:
     if isinstance(color, int):
         return f"{38 + offset};5;{color:d}"

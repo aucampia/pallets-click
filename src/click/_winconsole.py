@@ -9,7 +9,7 @@
 import ctypes
 import io
 import time
-import typing
+import typing as t
 from ctypes import byref
 from ctypes import c_char
 from ctypes import c_char_p
@@ -32,7 +32,7 @@ from ._compat import _NonClosingTextIOWrapper
 
 
 try:
-    pythonapi: typing.Optional[ctypes.PyDLL]
+    pythonapi: t.Optional[ctypes.PyDLL]
     from ctypes import pythonapi
 except ImportError:
     pythonapi = None

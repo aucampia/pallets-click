@@ -1,20 +1,20 @@
-import typing
+import typing as t
 from ._compat import filename_to_ui
 from ._compat import get_text_stderr
 from .utils import echo
 
-if typing.TYPE_CHECKING:
+if t.TYPE_CHECKING:
     from . import core as core_t
 
 
 def _join_param_hints(
-    param_hint: typing.Optional[
-        typing.Union[typing.List[typing.Any], typing.Tuple[typing.Any, ...]]
+    param_hint: t.Optional[
+        t.Union[t.List[t.Any], t.Tuple[t.Any, ...]]
     ]
 ) -> str:
     if isinstance(param_hint, (tuple, list)):
         return " / ".join(repr(x) for x in param_hint)
-    return typing.cast(str, param_hint)
+    return t.cast(str, param_hint)
 
 
 class ClickException(Exception):
@@ -33,7 +33,7 @@ class ClickException(Exception):
     def __str__(self) -> str:
         return self.message
 
-    def show(self, file: typing.Optional[typing.TextIO] = None) -> None:
+    def show(self, file: t.Optional[t.TextIO] = None) -> None:
         if file is None:
             file = get_text_stderr()
         echo(f"Error: {self.format_message()}", file=file)
@@ -50,13 +50,13 @@ class UsageError(ClickException):
 
     exit_code = 2
 
-    def __init__(self, message: str, ctx: typing.Optional[core_t.Context] = None):
+    def __init__(self, message: str, ctx: t.Optional[core_t.Context] = None):
         super().__init__(message)
         self.ctx = ctx
         self.cmd = self.ctx.command if self.ctx else None
 
-    def show(self, file: typing.Optional[typing.TextIO] = None) -> None:
-        if typing.TYPE_CHECKING:
+    def show(self, file: t.Optional[t.TextIO] = None) -> None:
+        if t.TYPE_CHECKING:
             assert self.ctx is not None
         if file is None:
             file = get_text_stderr()
@@ -64,7 +64,7 @@ class UsageError(ClickException):
         hint = ""
         if (
             self.cmd is not None
-            and typing.cast(core_t.Command, self.cmd).get_help_option(self.ctx)
+            and t.cast(core_t.Command, self.cmd).get_help_option(self.ctx)
             is not None
         ):
             hint = (
@@ -98,16 +98,16 @@ class BadParameter(UsageError):
     def __init__(
         self,
         message: str,
-        ctx: typing.Optional[core_t.Context] = None,
-        param: typing.Optional[core_t.Parameter] = None,
-        param_hint: typing.Optional[str] = None,
+        ctx: t.Optional[core_t.Context] = None,
+        param: t.Optional[core_t.Parameter] = None,
+        param_hint: t.Optional[str] = None,
     ):
         super().__init__(message, ctx)
         self.param = param
         self.param_hint = param_hint
 
     def format_message(self) -> str:
-        if typing.TYPE_CHECKING:
+        if t.TYPE_CHECKING:
             assert self.ctx is not None
         if self.param_hint is not None:
             param_hint = self.param_hint
@@ -134,11 +134,11 @@ class MissingParameter(BadParameter):
 
     def __init__(
         self,
-        message: typing.Optional[str] = None,
-        ctx: typing.Optional[core_t.Context] = None,
-        param: typing.Optional[core_t.Parameter] = None,
-        param_hint: typing.Optional[str] = None,
-        param_type: typing.Optional[str] = None,
+        message: t.Optional[str] = None,
+        ctx: t.Optional[core_t.Context] = None,
+        param: t.Optional[core_t.Parameter] = None,
+        param_hint: t.Optional[str] = None,
+        param_type: t.Optional[str] = None,
     ):
         super().__init__(message, ctx, param, param_hint)
         self.param_type = param_type

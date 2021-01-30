@@ -1,6 +1,6 @@
 import os
 import stat
-import typing
+import typing as t
 from datetime import datetime
 
 from ._compat import _get_argv_encoding
@@ -12,7 +12,7 @@ from .exceptions import BadParameter
 from .utils import LazyFile
 from .utils import safecall
 
-if typing.TYPE_CHECKING:
+if t.TYPE_CHECKING:
     from . import core as core_t
     from . import shell_completion as shell_completion_t
 
@@ -38,7 +38,7 @@ class ParamType:
     is_composite = False
 
     #: the descriptive name of this type
-    name: str = typing.cast(str, None)
+    name: str = t.cast(str, None)
 
     #: if a list of this type is expected and the value is pulled from a
     #: string environment variable, this is what splits it up.  `None`
@@ -46,9 +46,9 @@ class ParamType:
     #: whitespace splits them up.  The exception are paths and files which
     #: are split by ``os.path.pathsep`` by default (":" on Unix and ";" on
     #: Windows).
-    envvar_list_splitter: typing.ClassVar[typing.Optional[str]] = None
+    envvar_list_splitter: t.ClassVar[t.Optional[str]] = None
 
-    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self) -> t.Dict[str, t.Any]:
         """Gather information that could be useful for a tool generating
         user-facing documentation.
 
@@ -64,10 +64,10 @@ class ParamType:
 
     def __call__(
         self,
-        value: typing.Any,
-        param: typing.Optional[core_t.Parameter] = None,
-        ctx: typing.Optional[core_t.Context] = None,
-    ) -> typing.Any:
+        value: t.Any,
+        param: t.Optional[core_t.Parameter] = None,
+        ctx: t.Optional[core_t.Context] = None,
+    ) -> t.Any:
         if value is not None:
             return self.convert(value, param, ctx)
 
@@ -83,10 +83,10 @@ class ParamType:
 
     def convert(
         self,
-        value: typing.Any,
-        param: typing.Optional[core_t.Parameter],
-        ctx: typing.Optional[core_t.Context],
-    ) -> typing.Any:
+        value: t.Any,
+        param: t.Optional[core_t.Parameter],
+        ctx: t.Optional[core_t.Context],
+    ) -> t.Any:
         """Convert the value to the correct type. This is not called if
         the value is ``None`` (the missing value).
 
@@ -108,7 +108,7 @@ class ParamType:
         """
         return value
 
-    def split_envvar_value(self, rv: str) -> typing.List[str]:
+    def split_envvar_value(self, rv: str) -> t.List[str]:
         """Given a value from an environment variable this splits it up
         into small chunks depending on the defined envvar list splitter.
 
@@ -121,15 +121,15 @@ class ParamType:
     def fail(
         self,
         message: str,
-        param: typing.Optional[core_t.Parameter] = None,
-        ctx: typing.Optional[core_t.Context] = None,
-    ) -> typing.NoReturn:
+        param: t.Optional[core_t.Parameter] = None,
+        ctx: t.Optional[core_t.Context] = None,
+    ) -> t.NoReturn:
         """Helper method to fail with an invalid value message."""
         raise BadParameter(message, ctx=ctx, param=param)
 
     def shell_complete(
         self, ctx: core_t.Context, param: core_t.Parameter, incomplete: str
-    ) -> typing.List[shell_completion_t.CompletionItem]:
+    ) -> t.List[shell_completion_t.CompletionItem]:
         """Return a list of
         :class:`~click.shell_completion.CompletionItem` objects for the
         incomplete value. Most types do not provide completions, but
@@ -160,7 +160,7 @@ class FuncParamType(ParamType):
         self.name = func.__name__
         self.func = func
 
-    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self) -> t.Dict[str, t.Any]:
         info_dict = super().to_info_dict()
         info_dict["func"] = self.func
         return info_dict
@@ -234,7 +234,7 @@ class Choice(ParamType):
         self.choices = choices
         self.case_sensitive = case_sensitive
 
-    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self) -> t.Dict[str, t.Any]:
         info_dict = super().to_info_dict()
         info_dict["choices"] = self.choices
         info_dict["case_sensitive"] = self.case_sensitive
@@ -334,7 +334,7 @@ class DateTime(ParamType):
     def __init__(self, formats=None):
         self.formats = formats or ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
 
-    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_info_dict(self) -> t.Dict[str, t.Any]:
         info_dict = super().to_info_dict()
         info_dict["formats"] = self.formats
         return info_dict
@@ -369,7 +369,7 @@ class DateTime(ParamType):
 
 
 class _NumberParamTypeBase(ParamType):
-    _number_class: typing.ClassVar[typing.Optional[typing.Type[typing.Any]]] = None
+    _number_class: t.ClassVar[t.Optional[t.Type[t.Any]]] = None
 
     def convert(self, value, param, ctx):
         try:
@@ -853,8 +853,8 @@ class Tuple(CompositeParamType):
 
 
 def convert_type(
-    ty: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]],
-    default: typing.Optional[typing.Any] = None,
+    ty: t.Optional[t.Union[t.Type[t.Any], ParamType]],
+    default: t.Optional[t.Any] = None,
 ) -> ParamType:
     """Find the most appropriate :class:`ParamType` for the given Python
     type. If the type isn't provided, it can be inferred from a default

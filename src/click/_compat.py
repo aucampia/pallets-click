@@ -3,7 +3,7 @@ import io
 import os
 import re
 import sys
-import typing
+import typing as t
 from weakref import WeakKeyDictionary
 
 CYGWIN = sys.platform.startswith("cygwin")
@@ -511,7 +511,7 @@ if WIN:
     except ImportError:
         colorama = None
     else:
-        _ansi_stream_wrappers: typing.Any = WeakKeyDictionary()
+        _ansi_stream_wrappers: t.Any = WeakKeyDictionary()
 
         def auto_wrap_for_ansi(stream, color=None):
             """This function wraps a stream so that calls through colorama
