@@ -1,12 +1,20 @@
+import typing
 from ._compat import filename_to_ui
 from ._compat import get_text_stderr
 from .utils import echo
 
+if typing.TYPE_CHECKING:
+    from . import core as core_t
 
-def _join_param_hints(param_hint):
+
+def _join_param_hints(
+    param_hint: typing.Optional[
+        typing.Union[typing.List[typing.Any], typing.Tuple[typing.Any, ...]]
+    ]
+) -> str:
     if isinstance(param_hint, (tuple, list)):
         return " / ".join(repr(x) for x in param_hint)
-    return param_hint
+    return typing.cast(str, param_hint)
 
 
 class ClickException(Exception):
@@ -15,17 +23,17 @@ class ClickException(Exception):
     #: The exit code for this exception.
     exit_code = 1
 
-    def __init__(self, message):
+    def __init__(self, message: str):
         super().__init__(message)
         self.message = message
 
-    def format_message(self):
+    def format_message(self) -> str:
         return self.message
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.message
 
-    def show(self, file=None):
+    def show(self, file: typing.Optional[typing.TextIO] = None) -> None:
         if file is None:
             file = get_text_stderr()
         echo(f"Error: {self.format_message()}", file=file)
@@ -42,17 +50,23 @@ class UsageError(ClickException):
 
     exit_code = 2
 
-    def __init__(self, message, ctx=None):
+    def __init__(self, message: str, ctx: typing.Optional[core_t.Context] = None):
         super().__init__(message)
         self.ctx = ctx
         self.cmd = self.ctx.command if self.ctx else None
 
-    def show(self, file=None):
+    def show(self, file: typing.Optional[typing.TextIO] = None) -> None:
+        if typing.TYPE_CHECKING:
+            assert self.ctx is not None
         if file is None:
             file = get_text_stderr()
         color = None
         hint = ""
-        if self.cmd is not None and self.cmd.get_help_option(self.ctx) is not None:
+        if (
+            self.cmd is not None
+            and typing.cast(core_t.Command, self.cmd).get_help_option(self.ctx)
+            is not None
+        ):
             hint = (
                 f"Try '{self.ctx.command_path}"
                 f" {self.ctx.help_option_names[0]}' for help.\n"
@@ -81,19 +95,27 @@ class BadParameter(UsageError):
                        each item is quoted and separated.
     """
 
-    def __init__(self, message, ctx=None, param=None, param_hint=None):
+    def __init__(
+        self,
+        message: str,
+        ctx: typing.Optional[core_t.Context] = None,
+        param: typing.Optional[core_t.Parameter] = None,
+        param_hint: typing.Optional[str] = None,
+    ):
         super().__init__(message, ctx)
         self.param = param
         self.param_hint = param_hint
 
-    def format_message(self):
+    def format_message(self) -> str:
+        if typing.TYPE_CHECKING:
+            assert self.ctx is not None
         if self.param_hint is not None:
             param_hint = self.param_hint
         elif self.param is not None:
             param_hint = self.param.get_error_hint(self.ctx)
         else:
             return f"Invalid value: {self.message}"
-        param_hint = _join_param_hints(param_hint)
+        param_hint = _join_param_hints(param_hint)  # type: ignore
 
         return f"Invalid value for {param_hint}: {self.message}"
 
@@ -111,12 +133,17 @@ class MissingParameter(BadParameter):
     """
 
     def __init__(
-        self, message=None, ctx=None, param=None, param_hint=None, param_type=None
+        self,
+        message: typing.Optional[str] = None,
+        ctx: typing.Optional[core_t.Context] = None,
+        param: typing.Optional[core_t.Parameter] = None,
+        param_hint: typing.Optional[str] = None,
+        param_type: typing.Optional[str] = None,
     ):
         super().__init__(message, ctx, param, param_hint)
         self.param_type = param_type
 
-    def format_message(self):
+    def format_message(self) -> str:
         if self.param_hint is not None:
             param_hint = self.param_hint
         elif self.param is not None:

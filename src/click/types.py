@@ -12,6 +12,10 @@ from .exceptions import BadParameter
 from .utils import LazyFile
 from .utils import safecall
 
+if typing.TYPE_CHECKING:
+    from . import core as core_t
+    from . import shell_completion as shell_completion_t
+
 
 class ParamType:
     """Represents the type of a parameter. Validates and converts values
@@ -34,7 +38,7 @@ class ParamType:
     is_composite = False
 
     #: the descriptive name of this type
-    name: typing.ClassVar[typing.Optional[str]] = None
+    name: str = typing.cast(str, None)
 
     #: if a list of this type is expected and the value is pulled from a
     #: string environment variable, this is what splits it up.  `None`
@@ -44,7 +48,7 @@ class ParamType:
     #: Windows).
     envvar_list_splitter: typing.ClassVar[typing.Optional[str]] = None
 
-    def to_info_dict(self):
+    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
         """Gather information that could be useful for a tool generating
         user-facing documentation.
 
@@ -58,21 +62,31 @@ class ParamType:
         param_type = param_type.partition("ParameterType")[0]
         return {"param_type": param_type, "name": self.name}
 
-    def __call__(self, value, param=None, ctx=None):
+    def __call__(
+        self,
+        value: typing.Any,
+        param: typing.Optional[core_t.Parameter] = None,
+        ctx: typing.Optional[core_t.Context] = None,
+    ) -> typing.Any:
         if value is not None:
             return self.convert(value, param, ctx)
 
-    def get_metavar(self, param):
+    def get_metavar(self, param: core_t.Parameter) -> str:
         """Returns the metavar default for this param if it provides one."""
 
-    def get_missing_message(self, param):
+    def get_missing_message(self, param: core_t.Parameter) -> str:
         """Optionally might return extra information about a missing
         parameter.
 
         .. versionadded:: 2.0
         """
 
-    def convert(self, value, param, ctx):
+    def convert(
+        self,
+        value: typing.Any,
+        param: typing.Optional[core_t.Parameter],
+        ctx: typing.Optional[core_t.Context],
+    ) -> typing.Any:
         """Convert the value to the correct type. This is not called if
         the value is ``None`` (the missing value).
 
@@ -94,7 +108,7 @@ class ParamType:
         """
         return value
 
-    def split_envvar_value(self, rv):
+    def split_envvar_value(self, rv: str) -> typing.List[str]:
         """Given a value from an environment variable this splits it up
         into small chunks depending on the defined envvar list splitter.
 
@@ -104,11 +118,18 @@ class ParamType:
         """
         return (rv or "").split(self.envvar_list_splitter)
 
-    def fail(self, message, param=None, ctx=None):
+    def fail(
+        self,
+        message: str,
+        param: typing.Optional[core_t.Parameter] = None,
+        ctx: typing.Optional[core_t.Context] = None,
+    ) -> typing.NoReturn:
         """Helper method to fail with an invalid value message."""
         raise BadParameter(message, ctx=ctx, param=param)
 
-    def shell_complete(self, ctx, param, incomplete):
+    def shell_complete(
+        self, ctx: core_t.Context, param: core_t.Parameter, incomplete: str
+    ) -> typing.List[shell_completion_t.CompletionItem]:
         """Return a list of
         :class:`~click.shell_completion.CompletionItem` objects for the
         incomplete value. Most types do not provide completions, but
@@ -128,16 +149,18 @@ class CompositeParamType(ParamType):
     is_composite = True
 
     @property
-    def arity(self):
+    def arity(self) -> int:
         raise NotImplementedError()
 
 
 class FuncParamType(ParamType):
+    name: str
+
     def __init__(self, func):
         self.name = func.__name__
         self.func = func
 
-    def to_info_dict(self):
+    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
         info_dict = super().to_info_dict()
         info_dict["func"] = self.func
         return info_dict
@@ -211,13 +234,13 @@ class Choice(ParamType):
         self.choices = choices
         self.case_sensitive = case_sensitive
 
-    def to_info_dict(self):
+    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
         info_dict = super().to_info_dict()
         info_dict["choices"] = self.choices
         info_dict["case_sensitive"] = self.case_sensitive
         return info_dict
 
-    def get_metavar(self, param):
+    def get_metavar(self, param) -> str:
         choices_str = "|".join(self.choices)
 
         # Use curly braces to indicate a required argument.
@@ -227,7 +250,7 @@ class Choice(ParamType):
         # Use square braces to indicate an option or optional argument.
         return f"[{choices_str}]"
 
-    def get_missing_message(self, param):
+    def get_missing_message(self, param) -> str:
         choice_str = ",\n\t".join(self.choices)
         return f"Choose from:\n\t{choice_str}"
 
@@ -311,12 +334,12 @@ class DateTime(ParamType):
     def __init__(self, formats=None):
         self.formats = formats or ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
 
-    def to_info_dict(self):
+    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
         info_dict = super().to_info_dict()
         info_dict["formats"] = self.formats
         return info_dict
 
-    def get_metavar(self, param):
+    def get_metavar(self, param) -> str:
         return f"[{'|'.join(self.formats)}]"
 
     def _try_to_convert_date(self, value, format):
@@ -817,7 +840,7 @@ class Tuple(CompositeParamType):
         return f"<{' '.join(ty.name for ty in self.types)}>"
 
     @property
-    def arity(self):
+    def arity(self) -> int:
         return len(self.types)
 
     def convert(self, value, param, ctx):
@@ -829,7 +852,10 @@ class Tuple(CompositeParamType):
         return tuple(ty(x, param, ctx) for ty, x in zip(self.types, value))
 
 
-def convert_type(ty, default=None):
+def convert_type(
+    ty: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]],
+    default: typing.Optional[typing.Any] = None,
+) -> ParamType:
     """Find the most appropriate :class:`ParamType` for the given Python
     type. If the type isn't provided, it can be inferred from a default
     value.

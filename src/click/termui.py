@@ -4,6 +4,7 @@ import itertools
 import os
 import struct
 import sys
+import typing
 
 from ._compat import DEFAULT_COLUMNS
 from ._compat import get_winterm_size
@@ -16,12 +17,13 @@ from .exceptions import UsageError
 from .globals import resolve_color_default
 from .types import Choice
 from .types import convert_type
+from .types import ParamType
 from .utils import echo
 from .utils import LazyFile
 
 # The prompt functions to use.  The doc tools currently override these
 # functions to customize how they work.
-visible_prompt_func = input
+visible_prompt_func: typing.Callable[[str], str] = input
 
 _ansi_colors = {
     "black": 30,
@@ -45,15 +47,20 @@ _ansi_colors = {
 _ansi_reset_all = "\033[0m"
 
 
-def hidden_prompt_func(prompt):
+def hidden_prompt_func(prompt: str) -> str:
     import getpass
 
     return getpass.getpass(prompt)
 
 
 def _build_prompt(
-    text, suffix, show_default=False, default=None, show_choices=True, type=None
-):
+    text: str,
+    suffix: str,
+    show_default: bool = False,
+    default: typing.Any = None,
+    show_choices: bool = True,
+    type: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]] = None,
+) -> str:
     prompt = text
     if type is not None and show_choices and isinstance(type, Choice):
         prompt += f" ({', '.join(map(str, type.choices))})"
@@ -62,25 +69,25 @@ def _build_prompt(
     return f"{prompt}{suffix}"
 
 
-def _format_default(default):
+def _format_default(default: typing.Any) -> typing.Any:
     if isinstance(default, (io.IOBase, LazyFile)) and hasattr(default, "name"):
-        return default.name
+        return default.name  # type: ignore
 
     return default
 
 
 def prompt(
-    text,
-    default=None,
-    hide_input=False,
-    confirmation_prompt=False,
-    type=None,
-    value_proc=None,
-    prompt_suffix=": ",
-    show_default=True,
-    err=False,
-    show_choices=True,
-):
+    text: str,
+    default: typing.Optional[str] = None,
+    hide_input: bool = False,
+    confirmation_prompt: bool = False,
+    type: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]] = None,
+    value_proc: typing.Optional[typing.Callable[[typing.Any], typing.Any]] = None,
+    prompt_suffix: str = ": ",
+    show_default: bool = True,
+    err: bool = False,
+    show_choices: bool = True,
+) -> typing.Any:
     """Prompts a user for input.  This is a convenience function that can
     be used to prompt a user for input later.
 
@@ -117,8 +124,10 @@ def prompt(
     """
     result = None
 
-    def prompt_func(text):
-        f = hidden_prompt_func if hide_input else visible_prompt_func
+    def prompt_func(text: str) -> str:
+        f: typing.Callable[[str], str] = (
+            hidden_prompt_func if hide_input else visible_prompt_func
+        )
         try:
             # Write the prompt separately so that we get nice
             # coloring through colorama on Windows
@@ -167,8 +176,13 @@ def prompt(
 
 
 def confirm(
-    text, default=False, abort=False, prompt_suffix=": ", show_default=True, err=False
-):
+    text: str,
+    default: bool = False,
+    abort: bool = False,
+    prompt_suffix: str = ": ",
+    show_default: bool = True,
+    err: bool = False,
+) -> bool:
     """Prompts for confirmation (yes/no question).
 
     If the user aborts the input by sending a interrupt signal this
@@ -212,7 +226,7 @@ def confirm(
     return rv
 
 
-def get_terminal_size():
+def get_terminal_size() -> typing.Tuple[int, int]:
     """Returns the current size of the terminal as tuple in the form
     ``(width, height)`` in columns and rows.
     """
@@ -255,7 +269,12 @@ def get_terminal_size():
     return int(cr[1]), int(cr[0])
 
 
-def echo_via_pager(text_or_generator, color=None):
+def echo_via_pager(
+    text_or_generator: typing.Union[
+        str, typing.Callable[[], typing.Generator[str, typing.Any, typing.Any]]
+    ],
+    color=None,
+):
     """This function takes a text and shows it via an environment specific
     pager on stdout.
 
@@ -269,12 +288,17 @@ def echo_via_pager(text_or_generator, color=None):
     """
     color = resolve_color_default(color)
 
+    # i: typing.Union[typing.Iterable[str], typing.Iterator[str]]
+    i: typing.Iterable[str]
     if inspect.isgeneratorfunction(text_or_generator):
-        i = text_or_generator()
+        i = typing.cast(
+            typing.Callable[[], typing.Generator[str, typing.Any, typing.Any]],
+            text_or_generator,
+        )()
     elif isinstance(text_or_generator, str):
         i = [text_or_generator]
     else:
-        i = iter(text_or_generator)
+        i = iter(text_or_generator)  # type: ignore
 
     # convert every element of i to a text type if necessary
     text_generator = (el if isinstance(el, str) else str(el) for el in i)
@@ -426,7 +450,7 @@ def progressbar(
     )
 
 
-def clear():
+def clear() -> None:
     """Clears the terminal screen.  This will have the effect of clearing
     the whole visible space of the terminal and moving the cursor to the
     top left.  This does not do anything if not connected to a terminal.
@@ -444,7 +468,9 @@ def clear():
         sys.stdout.write("\033[2J\033[1;1H")
 
 
-def _interpret_color(color, offset=0):
+def _interpret_color(
+    color: typing.Union[int, typing.Tuple, typing.List], offset: int = 0
+) -> str:
     if isinstance(color, int):
         return f"{38 + offset};5;{color:d}"
 

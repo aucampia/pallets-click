@@ -31,6 +31,8 @@ from .types import _NumberRangeBase
 from .types import BOOL
 from .types import convert_type
 from .types import IntRange
+from .types import ParamType
+from .types import CompositeParamType
 from .utils import _detect_program_name
 from .utils import echo
 from .utils import make_default_short_help
@@ -48,6 +50,8 @@ SUBCOMMANDS_METAVAR = "COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]..."
 
 DEPRECATED_HELP_NOTICE = " (DEPRECATED)"
 DEPRECATED_INVOKE_NOTICE = "DeprecationWarning: The command {name} is deprecated."
+
+GenericT = typing.TypeVar("GenericT")
 
 
 def _maybe_show_deprecated_notice(cmd: "Command") -> None:
@@ -78,7 +82,7 @@ def _complete_visible_commands(
     assert isinstance(ctx.command, MultiCommand)
     for name in ctx.command.list_commands(ctx):
         if name.startswith(incomplete):
-            command = ctx.command.get_command(ctx, name)
+            command = typing.cast(Command, ctx.command.get_command(ctx, name))
 
             if not command.hidden:
                 yield name, command
@@ -106,9 +110,6 @@ def _check_multicommand(
         f" within a chained {type(base_command).__name__} named"
         f" {base_command.name!r})."
     )
-
-
-GenericT = typing.TypeVar("GenericT")
 
 
 def batch(
@@ -290,6 +291,9 @@ class Context:
     default_map: typing.Optional[typing.Mapping[str, typing.Any]]
     terminal_width: typing.Optional[int]
     max_content_width: typing.Optional[int]
+    resilient_parsing: bool
+    allow_interspersed_args: bool
+    ignore_unknown_options: bool
     help_option_names: typing.List[str]
     token_normalize_func: typing.Optional[typing.Callable[[str], str]]
     color: typing.Optional[bool]
@@ -1230,13 +1234,13 @@ class Command(BaseCommand):
             rv.extend(param.get_usage_pieces(ctx))
         return rv
 
-    def get_help_option_names(self, ctx: Context) -> typing.Set[str]:
+    def get_help_option_names(self, ctx: Context) -> typing.List[str]:
         """Returns the names for the help option."""
         all_names = set(ctx.help_option_names)
         for param in self.params:
             all_names.difference_update(param.opts)
             all_names.difference_update(param.secondary_opts)
-        return all_names
+        return all_names  # type: ignore
 
     def get_help_option(self, ctx: Context) -> typing.Optional["Option"]:
         """Returns the help option object."""
@@ -1442,7 +1446,7 @@ class MultiCommand(Command):
         chain: bool = False,
         result_callback: typing.Optional[typing.Callable[..., typing.Any]] = None,
         **attrs: typing.Any,
-    ) -> None:
+    ):
         super().__init__(name, **attrs)  # type: ignore
         if no_args_is_help is None:
             no_args_is_help = not invoke_without_command
@@ -1472,7 +1476,7 @@ class MultiCommand(Command):
         commands = {}
 
         for name in self.list_commands(ctx):
-            command = self.get_command(ctx, name)
+            command = typing.cast(Command, self.get_command(ctx, name))
             sub_ctx = ctx._make_sub_context(command)
 
             with sub_ctx.scope(cleanup=False):
@@ -1671,7 +1675,7 @@ class MultiCommand(Command):
             ctx.fail(f"No such command '{original_cmd_name}'.")
         return cmd.name if cmd else None, cmd, args[1:]  # type: ignore
 
-    def get_command(self, ctx: Context, cmd_name: str) -> Command:
+    def get_command(self, ctx: Context, cmd_name: str) -> typing.Optional[Command]:
         """Given a context and a command name, this returns a
         :class:`Command` object if it exists or returns `None`.
         """
@@ -1740,7 +1744,12 @@ class Group(MultiCommand):
     #: .. versionadded:: 8.0
     group_class = None
 
-    def __init__(self, name=None, commands=None, **attrs):
+    def __init__(
+        self,
+        name: typing.Optional[str] = None,
+        commands: typing.Optional[typing.Dict[str, Command]] = None,
+        **attrs: typing.Any,
+    ):
         super().__init__(name, **attrs)
 
         if commands is None:
@@ -1751,7 +1760,7 @@ class Group(MultiCommand):
         #: The registered subcommands by their exported names.
         self.commands = commands
 
-    def add_command(self, cmd, name=None):
+    def add_command(self, cmd: Command, name: typing.Optional[str] = None) -> None:
         """Registers another :class:`Command` with this group.  If the name
         is not provided, the name of the command is used.
         """
@@ -1761,7 +1770,9 @@ class Group(MultiCommand):
         _check_multicommand(self, name, cmd, register=True)
         self.commands[name] = cmd
 
-    def command(self, *args, **kwargs):
+    def command(
+        self, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Callable[[typing.Callable[..., typing.Any]], typing.Any]:
         """A shortcut decorator for declaring and attaching a command to
         the group. This takes the same arguments as :func:`command` and
         immediately registers the created command with this group by
@@ -1778,14 +1789,18 @@ class Group(MultiCommand):
         if self.command_class is not None and "cls" not in kwargs:
             kwargs["cls"] = self.command_class
 
-        def decorator(f):
+        def decorator(
+            f: typing.Callable[..., typing.Any]
+        ) -> typing.Callable[..., typing.Any]:
             cmd = command(*args, **kwargs)(f)
             self.add_command(cmd)
             return cmd
 
         return decorator
 
-    def group(self, *args, **kwargs):
+    def group(
+        self, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Callable[[typing.Callable[..., typing.Any]], typing.Any]:
         """A shortcut decorator for declaring and attaching a group to
         the group. This takes the same arguments as :func:`group` and
         immediately registers the created group with this group by
@@ -1805,17 +1820,19 @@ class Group(MultiCommand):
             else:
                 kwargs["cls"] = self.group_class
 
-        def decorator(f):
+        def decorator(
+            f: typing.Callable[..., typing.Any]
+        ) -> typing.Callable[..., typing.Any]:
             cmd = group(*args, **kwargs)(f)
             self.add_command(cmd)
             return cmd
 
         return decorator
 
-    def get_command(self, ctx: Context, cmd_name):
+    def get_command(self, ctx: Context, cmd_name: str) -> typing.Optional[Command]:
         return self.commands.get(cmd_name)
 
-    def list_commands(self, ctx: Context):
+    def list_commands(self, ctx: Context) -> typing.List[str]:
         return sorted(self.commands)
 
 
@@ -1826,16 +1843,21 @@ class CommandCollection(MultiCommand):
     provides all the commands for each of them.
     """
 
-    def __init__(self, name=None, sources=None, **attrs):
+    def __init__(
+        self,
+        name: str = None,
+        sources: typing.List[MultiCommand] = None,
+        **attrs: typing.Any,
+    ):
         super().__init__(name, **attrs)
         #: The list of registered multi commands.
         self.sources = sources or []
 
-    def add_source(self, multi_cmd):
+    def add_source(self, multi_cmd: MultiCommand) -> None:
         """Adds a new multi command to the chain dispatcher."""
         self.sources.append(multi_cmd)
 
-    def get_command(self, ctx: Context, cmd_name):
+    def get_command(self, ctx: Context, cmd_name: str) -> Command:
         for source in self.sources:
             rv = source.get_command(ctx, cmd_name)
             if rv is not None:
@@ -1843,7 +1865,7 @@ class CommandCollection(MultiCommand):
                     _check_multicommand(self, cmd_name, rv)
                 return rv
 
-    def list_commands(self, ctx: Context):
+    def list_commands(self, ctx: Context) -> typing.List[str]:
         rv = set()
         for source in self.sources:
             rv.update(source.list_commands(ctx))
@@ -1919,21 +1941,34 @@ class Parameter:
 
     param_type_name = "parameter"
 
+    name: str
+    type: ParamType
+    nargs: int
+
     def __init__(
         self,
-        param_decls=None,
-        type=None,
-        required=False,
-        default=None,
-        callback=None,
-        nargs=None,
-        metavar=None,
-        expose_value=True,
-        is_eager=False,
-        envvar=None,
-        shell_complete=None,
-        autocompletion=None,
+        param_decls: typing.Optional[typing.List[str]] = None,
+        type: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]] = None,
+        required: bool = False,
+        default: typing.Any = None,
+        callback: typing.Callable[
+            [Context, "Parameter", typing.Any], typing.Any
+        ] = None,
+        nargs: typing.Optional[int] = None,
+        metavar: typing.Optional[str] = None,
+        expose_value: bool = True,
+        is_eager: bool = False,
+        envvar: typing.Optional[typing.Union[typing.List[str], str]] = None,
+        shell_complete: typing.Optional[
+            typing.Callable[
+                [Context, "Parameter", str],
+                typing.List[typing.Union[shell_completion_t.CompletionItem, str]],
+            ]
+        ] = None,
+        autocompletion: None = None,
     ):
+        if typing.TYPE_CHECKING:
+            assert isinstance(self, (Option, Argument))
         self.name, self.opts, self.secondary_opts = self._parse_decls(
             param_decls or (), expose_value
         )
@@ -1944,7 +1979,7 @@ class Parameter:
         # information available.
         if nargs is None:
             if self.type.is_composite:
-                nargs = self.type.arity
+                nargs = typing.cast(CompositeParamType, self.type).arity
             else:
                 nargs = 1
 
@@ -1987,7 +2022,7 @@ class Parameter:
 
         self._custom_shell_complete = shell_complete
 
-    def to_info_dict(self):
+    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
         """Gather information that could be useful for a tool generating
         user-facing documentation.
 
@@ -2009,17 +2044,17 @@ class Parameter:
             "envvar": self.envvar,
         }
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.name}>"
 
     @property
-    def human_readable_name(self):
+    def human_readable_name(self) -> typing.Optional[str]:
         """Returns the human readable name of this parameter.  This is the
         same as the name for options, but the metavar for arguments.
         """
         return self.name
 
-    def make_metavar(self):
+    def make_metavar(self) -> str:
         if self.metavar is not None:
             return self.metavar
         metavar = self.type.get_metavar(self)
@@ -2029,7 +2064,7 @@ class Parameter:
             metavar += "..."
         return metavar
 
-    def get_default(self, ctx, call=True):
+    def get_default(self, ctx: Context, call: bool = True) -> typing.Any:
         """Get the default for the parameter. Tries
         :meth:`Context.lookup_value` first, then the local default.
 
@@ -2057,10 +2092,12 @@ class Parameter:
 
         return self.type_cast_value(ctx, value)
 
-    def add_to_parser(self, parser, ctx):
+    def add_to_parser(self, parser: OptionParser, ctx: Context) -> None:
         pass
 
-    def consume_value(self, ctx, opts):
+    def consume_value(
+        self, ctx: Context, opts: typing.Dict[str, typing.Any]
+    ) -> typing.Tuple[typing.Any, ParameterSource]:
         value = opts.get(self.name)
         source = ParameterSource.COMMANDLINE
 
@@ -2078,7 +2115,7 @@ class Parameter:
 
         return value, source
 
-    def type_cast_value(self, ctx, value):
+    def type_cast_value(self, ctx: Context, value: str) -> typing.Any:
         """Given a value this runs it properly through the type system.
         This automatically handles things like `nargs` and `multiple` as
         well as composite types.
@@ -2099,7 +2136,7 @@ class Parameter:
 
             return self.type(value, self, ctx)
 
-        def _convert(value, level):
+        def _convert(value: str, level: int) -> typing.Any:
             if level == 0:
                 return self.type(value, self, ctx)
 
@@ -2107,7 +2144,7 @@ class Parameter:
 
         return _convert(value, (self.nargs != 1) + bool(self.multiple))
 
-    def process_value(self, ctx, value):
+    def process_value(self, ctx: Context, value: str) -> typing.Any:
         """Given a value and context this runs the logic to convert the
         value as necessary.
         """
@@ -2118,14 +2155,14 @@ class Parameter:
         if value is not None:
             return self.type_cast_value(ctx, value)
 
-    def value_is_missing(self, value):
+    def value_is_missing(self, value: typing.Any) -> bool:
         if value is None:
             return True
         if (self.nargs != 1 or self.multiple) and value == ():
             return True
         return False
 
-    def full_process_value(self, ctx, value):
+    def full_process_value(self, ctx: Context, value: typing.Any) -> typing.Any:
         value = self.process_value(ctx, value)
 
         if self.required and self.value_is_missing(value):
@@ -2150,9 +2187,9 @@ class Parameter:
 
         return value
 
-    def resolve_envvar_value(self, ctx):
+    def resolve_envvar_value(self, ctx: Context) -> typing.Optional[str]:
         if self.envvar is None:
-            return
+            return None
 
         if isinstance(self.envvar, (tuple, list)):
             for envvar in self.envvar:
@@ -2166,15 +2203,21 @@ class Parameter:
             if rv:
                 return rv
 
-    def value_from_envvar(self, ctx):
-        rv = self.resolve_envvar_value(ctx)
+    def value_from_envvar(
+        self, ctx: Context
+    ) -> typing.Optional[typing.Union[str, typing.List[str]]]:
+        rv: typing.Optional[
+            typing.Union[str, typing.List[str]]
+        ] = self.resolve_envvar_value(ctx)
 
         if rv is not None and self.nargs != 1:
-            rv = self.type.split_envvar_value(rv)
+            rv = self.type.split_envvar_value(typing.cast(str, rv))
 
         return rv
 
-    def handle_parse_result(self, ctx, opts, args):
+    def handle_parse_result(
+        self, ctx: Context, opts: typing.Dict[str, typing.Any], args: typing.List[str]
+    ) -> typing.Tuple[typing.Any, typing.List[str]]:
         with augment_usage_errors(ctx, param=self):
             value, source = self.consume_value(ctx, opts)
             ctx.set_parameter_source(self.name, source)
@@ -2195,20 +2238,24 @@ class Parameter:
 
         return value, args
 
-    def get_help_record(self, ctx):
+    def get_help_record(self, ctx: Context) -> typing.Optional[typing.Tuple[str, str]]:
         pass
 
-    def get_usage_pieces(self, ctx):
+    def get_usage_pieces(self, ctx: Context) -> typing.List[str]:
         return []
 
-    def get_error_hint(self, ctx):
+    def get_error_hint(self, ctx: Context) -> str:
         """Get a stringified version of the param for use in error messages to
         indicate which param caused the error.
         """
-        hint_list = self.opts or [self.human_readable_name]
+        hint_list = typing.cast(typing.List[typing.Any], self.opts) or [
+            self.human_readable_name
+        ]
         return " / ".join(repr(x) for x in hint_list)
 
-    def shell_complete(self, ctx, incomplete):
+    def shell_complete(
+        self, ctx: Context, incomplete: str
+    ) -> typing.Sequence[typing.Union[shell_completion_t.CompletionItem, str]]:
         """Return a list of completions for the incomplete value. If a
         ``shell_complete`` function was given during init, it is used.
         Otherwise, the :attr:`type`
@@ -2275,36 +2322,46 @@ class Option(Parameter):
     """
 
     param_type_name = "option"
+    prompt: typing.Optional[str]
+    confirmation_prompt: bool
+    prompt_required: bool
+    hide_input: bool
+    is_flag: bool
+    flag_value: typing.Any
+    hidden: bool
+
+    _flag_needs_value: bool
 
     def __init__(
         self,
-        param_decls=None,
-        show_default=False,
-        prompt=False,
-        confirmation_prompt=False,
-        prompt_required=True,
-        hide_input=False,
-        is_flag=None,
-        flag_value=None,
-        multiple=False,
-        count=False,
-        allow_from_autoenv=True,
-        type=None,
-        help=None,
-        hidden=False,
-        show_choices=True,
-        show_envvar=False,
-        **attrs,
+        param_decls: typing.Optional[typing.List[str]] = None,
+        show_default: bool = False,
+        prompt: typing.Union[bool, str] = False,
+        confirmation_prompt: bool = False,
+        prompt_required: bool = True,
+        hide_input: bool = False,
+        is_flag: typing.Optional[bool] = None,
+        flag_value: typing.Optional[typing.Any] = None,
+        multiple: bool = False,
+        count: bool = False,
+        allow_from_autoenv: bool = True,
+        type: typing.Optional[typing.Union[typing.Type[typing.Any], ParamType]] = None,
+        help: typing.Optional[str] = None,
+        hidden: bool = False,
+        show_choices: bool = True,
+        show_envvar: bool = False,
+        **attrs: typing.Any,
     ):
         default_is_missing = attrs.get("default", _missing) is _missing
         super().__init__(param_decls, type=type, **attrs)
 
+        prompt_text: typing.Optional[str]
         if prompt is True:
             prompt_text = self.name.replace("_", " ").capitalize()
         elif prompt is False:
             prompt_text = None
         else:
-            prompt_text = prompt
+            prompt_text = typing.cast(str, prompt)
         self.prompt = prompt_text
         self.confirmation_prompt = confirmation_prompt
         self.prompt_required = prompt_required
@@ -2380,7 +2437,7 @@ class Option(Parameter):
                         "Options cannot be count and flags at the same time."
                     )
 
-    def to_info_dict(self):
+    def to_info_dict(self) -> typing.Dict[str, typing.Any]:
         info_dict = super().to_info_dict()
         info_dict.update(
             help=self.help,
@@ -2392,7 +2449,9 @@ class Option(Parameter):
         )
         return info_dict
 
-    def _parse_decls(self, decls, expose_value):
+    def _parse_decls(
+        self, decls: typing.Sequence[str], expose_value: bool
+    ) -> typing.Tuple[str, typing.List[str], typing.List[str]]:
         opts = []
         secondary_opts = []
         name = None
@@ -2431,7 +2490,7 @@ class Option(Parameter):
 
         if name is None:
             if not expose_value:
-                return None, opts, secondary_opts
+                return None, opts, secondary_opts  # type: ignore
             raise TypeError("Could not determine name for option")
 
         if not opts and not secondary_opts:
@@ -2443,8 +2502,8 @@ class Option(Parameter):
 
         return name, opts, secondary_opts
 
-    def add_to_parser(self, parser, ctx):
-        kwargs = {
+    def add_to_parser(self, parser: OptionParser, ctx: Context) -> None:
+        kwargs: typing.Dict[str, typing.Any] = {
             "dest": self.name,
             "nargs": self.nargs,
             "obj": self,
@@ -2473,12 +2532,12 @@ class Option(Parameter):
             kwargs["action"] = action
             parser.add_option(self.opts, **kwargs)
 
-    def get_help_record(self, ctx):
+    def get_help_record(self, ctx: Context) -> typing.Optional[typing.Tuple[str, str]]:
         if self.hidden:
-            return
-        any_prefix_is_slash = []
+            return None
+        any_prefix_is_slash: typing.List[bool] = []
 
-        def _write_opts(opts):
+        def _write_opts(opts: typing.List[str]) -> str:
             rv, any_slashes = join_options(opts)
             if any_slashes:
                 any_prefix_is_slash[:] = [True]
@@ -2539,21 +2598,21 @@ class Option(Parameter):
 
         return ("; " if any_prefix_is_slash else " / ").join(rv), help
 
-    def get_default(self, ctx, call=True):
+    def get_default(self, ctx: Context, call: bool = True) -> typing.Any:
         # If we're a non boolean flag our default is more complex because
         # we need to look at all flags in the same group to figure out
         # if we're the the default one in which case we return the flag
         # value as default.
         if self.is_flag and not self.is_bool_flag:
-            for param in ctx.command.params:
+            for param in typing.cast(Command, ctx.command).params:
                 if param.name == self.name and param.default:
-                    return param.flag_value
+                    return param.flag_value  # type: ignore
 
             return None
 
         return super().get_default(ctx, call=call)
 
-    def prompt_for_value(self, ctx):
+    def prompt_for_value(self, ctx: Context) -> typing.Any:
         """This is an alternative flow that can be activated in the full
         value processing if a value does not exist.  It will prompt the
         user until a valid value exists and then returns the processed
@@ -2562,6 +2621,8 @@ class Option(Parameter):
         # Calculate the default before prompting anything to be stable.
         default = self.get_default(ctx)
 
+        if typing.TYPE_CHECKING:
+            assert self.prompt is not None
         # If this is a prompt for a flag we need to handle this
         # differently.
         if self.is_bool_flag:
@@ -2577,7 +2638,7 @@ class Option(Parameter):
             value_proc=lambda x: self.process_value(ctx, x),
         )
 
-    def resolve_envvar_value(self, ctx):
+    def resolve_envvar_value(self, ctx: Context) -> typing.Optional[str]:
         rv = super().resolve_envvar_value(ctx)
 
         if rv is not None:
@@ -2590,8 +2651,12 @@ class Option(Parameter):
             if rv:
                 return rv
 
-    def value_from_envvar(self, ctx):
-        rv = self.resolve_envvar_value(ctx)
+    def value_from_envvar(
+        self, ctx: Context
+    ) -> typing.Optional[typing.Union[str, typing.List[str]]]:
+        rv: typing.Optional[
+            typing.Union[str, typing.List[str]]
+        ] = self.resolve_envvar_value(ctx)
 
         if rv is None:
             return None
@@ -2599,14 +2664,16 @@ class Option(Parameter):
         value_depth = (self.nargs != 1) + bool(self.multiple)
 
         if value_depth > 0 and rv is not None:
-            rv = self.type.split_envvar_value(rv)
+            rv = self.type.split_envvar_value(typing.cast(str, rv))
 
             if self.multiple and self.nargs != 1:
-                rv = batch(rv, self.nargs)
+                rv = batch(rv, self.nargs)  # type: ignore
 
         return rv
 
-    def consume_value(self, ctx, opts):
+    def consume_value(
+        self, ctx: Context, opts: typing.Dict[str, typing.Any]
+    ) -> typing.Tuple[typing.Any, ParameterSource]:
         value, source = super().consume_value(ctx, opts)
 
         # The parser will emit a sentinel value if the option can be
@@ -2644,7 +2711,12 @@ class Argument(Parameter):
 
     param_type_name = "argument"
 
-    def __init__(self, param_decls, required=None, **attrs):
+    def __init__(
+        self,
+        param_decls: typing.Optional[typing.List[str]],
+        required: typing.Optional[bool] = None,
+        **attrs: typing.Any,
+    ):
         if required is None:
             if attrs.get("default") is not None:
                 required = False
@@ -2659,12 +2731,12 @@ class Argument(Parameter):
             )
 
     @property
-    def human_readable_name(self):
+    def human_readable_name(self) -> str:
         if self.metavar is not None:
             return self.metavar
         return self.name.upper()
 
-    def make_metavar(self):
+    def make_metavar(self) -> str:
         if self.metavar is not None:
             return self.metavar
         var = self.type.get_metavar(self)
@@ -2676,10 +2748,12 @@ class Argument(Parameter):
             var += "..."
         return var
 
-    def _parse_decls(self, decls, expose_value):
+    def _parse_decls(
+        self, decls: typing.Sequence[str], expose_value: bool
+    ) -> typing.Tuple[str, typing.List[str], typing.List[str]]:
         if not decls:
             if not expose_value:
-                return None, [], []
+                return None, [], []  # type: ignore
             raise TypeError("Could not determine name for argument")
         if len(decls) == 1:
             name = arg = decls[0]
@@ -2691,11 +2765,11 @@ class Argument(Parameter):
             )
         return name, [arg], []
 
-    def get_usage_pieces(self, ctx):
+    def get_usage_pieces(self, ctx: Context) -> typing.List[str]:
         return [self.make_metavar()]
 
-    def get_error_hint(self, ctx):
+    def get_error_hint(self, ctx: Context) -> str:
         return repr(self.make_metavar())
 
-    def add_to_parser(self, parser, ctx):
+    def add_to_parser(self, parser: OptionParser, ctx: Context) -> None:
         parser.add_argument(dest=self.name, nargs=self.nargs, obj=self)

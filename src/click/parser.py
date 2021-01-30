@@ -21,6 +21,7 @@ Copyright 2002-2006 Python Software Foundation. All rights reserved.
 # maintained by the Python Software Foundation.
 # Copyright 2001-2006 Gregory P. Ward
 # Copyright 2002-2006 Python Software Foundation
+import typing
 from collections import deque
 
 from .exceptions import BadArgumentUsage
@@ -28,13 +29,18 @@ from .exceptions import BadOptionUsage
 from .exceptions import NoSuchOption
 from .exceptions import UsageError
 
+if typing.TYPE_CHECKING:
+    from . import core as core_t
+
+GenericT = typing.TypeVar("GenericT")
+
 # Sentinel value that indicates an option was passed as a flag without a
 # value but is not a flag option. Option.consume_value uses this to
 # prompt or use the flag_value.
 _flag_needs_value = object()
 
 
-def _unpack_args(args, nargs_spec):
+def _unpack_args(args: typing.Iterable[str], nargs_spec: typing.Iterable[int]):
     """Given an iterable of arguments and an iterable of nargs specifications,
     it returns a tuple with all the unpacked arguments at the first index
     and all remaining arguments as the second.
@@ -46,10 +52,10 @@ def _unpack_args(args, nargs_spec):
     """
     args = deque(args)
     nargs_spec = deque(nargs_spec)
-    rv = []
+    rv: typing.List[typing.Any] = []
     spos = None
 
-    def _fetch(c):
+    def _fetch(c: typing.Deque[GenericT]) -> typing.Optional[GenericT]:
         try:
             if spos is None:
                 return c.popleft()
@@ -59,7 +65,7 @@ def _unpack_args(args, nargs_spec):
             return None
 
     while nargs_spec:
-        nargs = _fetch(nargs_spec)
+        nargs = typing.cast(int, _fetch(nargs_spec))
         if nargs == 1:
             rv.append(_fetch(args))
         elif nargs > 1:
@@ -85,7 +91,7 @@ def _unpack_args(args, nargs_spec):
     return tuple(rv), list(args)
 
 
-def split_opt(opt):
+def split_opt(opt: str) -> typing.Tuple[str, str]:
     first = opt[:1]
     if first.isalnum():
         return "", opt
@@ -94,14 +100,14 @@ def split_opt(opt):
     return first, opt[1:]
 
 
-def normalize_opt(opt, ctx):
+def normalize_opt(opt: str, ctx: typing.Optional[core_t.Context]) -> str:
     if ctx is None or ctx.token_normalize_func is None:
         return opt
     prefix, opt = split_opt(opt)
     return f"{prefix}{ctx.token_normalize_func(opt)}"
 
 
-def split_arg_string(string):
+def split_arg_string(string: str) -> typing.List[str]:
     """Split an argument string as with :func:`shlex.split`, but don't
     fail if the string is incomplete. Ignores a missing closing quote or
     incomplete escape sequence and uses the partial token as-is.
@@ -136,7 +142,22 @@ def split_arg_string(string):
 
 
 class Option:
-    def __init__(self, opts, dest, action=None, nargs=1, const=None, obj=None):
+    opts: typing.List[str]
+    dest: str
+    action: typing.Optional[str]
+    nargs: int
+    const: typing.Optional[str]
+    obj: typing.Optional[str]
+
+    def __init__(
+        self,
+        opts: typing.List[str],
+        dest: str,
+        action: typing.Optional[str] = None,
+        nargs: int = 1,
+        const: typing.Optional[str] = None,
+        obj: typing.Optional[str] = None,
+    ):
         self._short_opts = []
         self._long_opts = []
         self.prefixes = set()
@@ -162,10 +183,10 @@ class Option:
         self.obj = obj
 
     @property
-    def takes_value(self):
+    def takes_value(self) -> bool:
         return self.action in ("store", "append")
 
-    def process(self, value, state):
+    def process(self, value: str, state: "ParsingState"):
         if self.action == "store":
             state.opts[self.dest] = value
         elif self.action == "store_const":
@@ -182,30 +203,35 @@ class Option:
 
 
 class Argument:
-    def __init__(self, dest, nargs=1, obj=None):
+    def __init__(self, dest: str, nargs: int = 1, obj=None):
         self.dest = dest
         self.nargs = nargs
         self.obj = obj
 
-    def process(self, value, state):
+    def process(self, value: str, state: "ParsingState") -> None:
         if self.nargs > 1:
             holes = sum(1 for x in value if x is None)
             if holes == len(value):
-                value = None
+                value = None  # type: ignore
             elif holes != 0:
                 raise BadArgumentUsage(
                     f"argument {self.dest} takes {self.nargs} values"
                 )
 
         if self.nargs == -1 and self.obj.envvar is not None:
-            value = None
+            value = None  # type: ignore
 
         state.opts[self.dest] = value
         state.order.append(self.obj)
 
 
 class ParsingState:
-    def __init__(self, rargs):
+    opts: typing.Dict[str, typing.Any]
+    largs: typing.List[str]
+    rargs: typing.List[str]
+    order: typing.List[core_t.Parameter]
+
+    def __init__(self, rargs: typing.List[str]):
         self.opts = {}
         self.largs = []
         self.rargs = rargs
@@ -226,7 +252,12 @@ class OptionParser:
                 should go with.
     """
 
-    def __init__(self, ctx=None):
+    _short_opt: typing.Dict[str, Option]
+    _long_opt: typing.Dict[str, Option]
+    _opt_prefixes: typing.Set[str]
+    _args: typing.List[Argument]
+
+    def __init__(self, ctx: typing.Optional[core_t.Context] = None):
         #: The :class:`~click.Context` for this parser.  This might be
         #: `None` for some advanced use cases.
         self.ctx = ctx
@@ -248,7 +279,15 @@ class OptionParser:
         self._opt_prefixes = {"-", "--"}
         self._args = []
 
-    def add_option(self, opts, dest, action=None, nargs=1, const=None, obj=None):
+    def add_option(
+        self,
+        opts,
+        dest: str,
+        action: typing.Optional[str] = None,
+        nargs: int = 1,
+        const=None,
+        obj=None,
+    ):
         """Adds a new option named `dest` to the parser.  The destination
         is not inferred (unlike with optparse) and needs to be explicitly
         provided.  Action can be any of ``store``, ``store_const``,
@@ -267,7 +306,7 @@ class OptionParser:
         for opt in option._long_opts:
             self._long_opt[opt] = option
 
-    def add_argument(self, dest, nargs=1, obj=None):
+    def add_argument(self, dest: str, nargs: int = 1, obj=None) -> None:
         """Adds a positional argument named `dest` to the parser.
 
         The `obj` can be used to identify the option in the order list
@@ -277,7 +316,11 @@ class OptionParser:
             obj = dest
         self._args.append(Argument(dest=dest, nargs=nargs, obj=obj))
 
-    def parse_args(self, args):
+    def parse_args(
+        self, args: typing.List[str]
+    ) -> typing.Tuple[
+        typing.Dict[str, typing.Any], typing.List[str], typing.List[core_t.Parameter]
+    ]:
         """Parses positional arguments and returns ``(values, args, order)``
         for the parsed options and arguments as well as the leftover
         arguments if there are any.  The order is a list of objects as they
@@ -293,7 +336,7 @@ class OptionParser:
                 raise
         return state.opts, state.largs, state.order
 
-    def _process_args_for_args(self, state):
+    def _process_args_for_args(self, state: ParsingState) -> None:
         pargs, args = _unpack_args(
             state.largs + state.rargs, [x.nargs for x in self._args]
         )
@@ -304,7 +347,7 @@ class OptionParser:
         state.largs = args
         state.rargs = []
 
-    def _process_args_for_options(self, state):
+    def _process_args_for_options(self, state: ParsingState) -> None:
         while state.rargs:
             arg = state.rargs.pop(0)
             arglen = len(arg)
@@ -340,7 +383,9 @@ class OptionParser:
         # *empty* -- still a subset of [arg0, ..., arg(i-1)], but
         # not a very interesting subset!
 
-    def _match_long_opt(self, opt, explicit_value, state):
+    def _match_long_opt(
+        self, opt: str, explicit_value: str, state: ParsingState
+    ) -> None:
         if opt not in self._long_opt:
             from difflib import get_close_matches
 
@@ -366,7 +411,7 @@ class OptionParser:
 
         option.process(value, state)
 
-    def _match_short_opt(self, arg, state):
+    def _match_short_opt(self, arg: str, state: ParsingState) -> None:
         stop = False
         i = 1
         prefix = arg[0]
@@ -406,7 +451,9 @@ class OptionParser:
         if self.ignore_unknown_options and unknown_options:
             state.largs.append(f"{prefix}{''.join(unknown_options)}")
 
-    def _get_value_from_state(self, option_name, option, state):
+    def _get_value_from_state(
+        self, option_name: str, option: Option, state: ParsingState
+    ) -> None:
         nargs = option.nargs
 
         if len(state.rargs) < nargs:
@@ -438,7 +485,7 @@ class OptionParser:
 
         return value
 
-    def _process_opts(self, arg, state):
+    def _process_opts(self, arg: str, state: ParsingState):
         explicit_value = None
         # Long option handling happens in two parts.  The first part is
         # supporting explicitly attached values.  In any case, we will try

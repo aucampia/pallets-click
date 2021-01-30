@@ -72,14 +72,14 @@ class CompletionItem:
 
     __slots__ = ("value", "type", "help", "_info")
 
-    value: str
+    value: typing.Union[str, "CompletionItem"]
     type: str
     help: typing.Optional[str]
     _info: typing.Dict[str, typing.Any]
 
     def __init__(
         self,
-        value: str,
+        value: typing.Union[str, "CompletionItem"],
         type: str = "plain",
         help: typing.Optional[str] = None,
         **kwargs: typing.Any,
