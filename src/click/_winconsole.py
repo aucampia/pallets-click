@@ -9,6 +9,7 @@
 import ctypes
 import io
 import time
+import typing as t
 from ctypes import byref
 from ctypes import c_char
 from ctypes import c_char_p
@@ -18,8 +19,8 @@ from ctypes import c_ulong
 from ctypes import c_void_p
 from ctypes import POINTER
 from ctypes import py_object
-from ctypes import windll
-from ctypes import WINFUNCTYPE
+from ctypes import windll  # type: ignore
+from ctypes import WINFUNCTYPE  # type: ignore
 from ctypes.wintypes import DWORD
 from ctypes.wintypes import HANDLE
 from ctypes.wintypes import LPCWSTR
@@ -30,10 +31,13 @@ import msvcrt
 from ._compat import _NonClosingTextIOWrapper
 
 try:
+    pythonapi: t.Optional[ctypes.PyDLL]
     from ctypes import pythonapi
 except ImportError:
     pythonapi = None
 else:
+    if t.TYPE_CHECKING:
+        assert pythonapi is not None
     PyObject_GetBuffer = pythonapi.PyObject_GetBuffer
     PyBuffer_Release = pythonapi.PyBuffer_Release
 

@@ -4,6 +4,7 @@ import itertools
 import os
 import struct
 import sys
+import typing as t
 
 from ._compat import DEFAULT_COLUMNS
 from ._compat import get_winterm_size
@@ -677,7 +678,7 @@ def launch(url, wait=False, locate=False):
 
 # If this is provided, getchar() calls into this instead.  This is used
 # for unittesting purposes.
-_getchar = None
+_getchar: t.Any = None
 
 
 def getchar(echo=False):

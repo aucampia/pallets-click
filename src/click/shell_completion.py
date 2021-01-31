@@ -1,5 +1,6 @@
 import os
 import re
+import typing as t
 
 from .core import Argument
 from .core import MultiCommand
@@ -183,12 +184,12 @@ class ShellComplete:
     .. versionadded:: 8.0
     """
 
-    name = None
+    name: t.ClassVar[t.Optional[str]] = None
     """Name to register the shell as with :func:`add_completion_class`.
     This is used in completion instructions (``{name}_source`` and
     ``{name}_complete``).
     """
-    source_template = None
+    source_template: t.ClassVar[t.Optional[str]] = None
     """Completion script template formatted by :meth:`source`. This must
     be provided by subclasses.
     """

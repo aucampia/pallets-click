@@ -1,3 +1,4 @@
+import typing as t
 from contextlib import contextmanager
 
 from ._compat import term_len
@@ -5,7 +6,7 @@ from .parser import split_opt
 from .termui import get_terminal_size
 
 # Can force a width.  This is used by the test system
-FORCED_WIDTH = None
+FORCED_WIDTH: t.Optional[int] = None
 
 
 def measure_table(rows):
