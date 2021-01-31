@@ -1,17 +1,15 @@
-from contextlib import contextmanager
 import typing as t
+from contextlib import contextmanager
 
 from ._compat import term_len
 from .parser import split_opt
 from .termui import get_terminal_size
 
 # Can force a width.  This is used by the test system
-FORCED_WIDTH = None
+FORCED_WIDTH: t.Optional[int] = None
 
 
-def measure_table(
-    rows: t.Iterable[t.Iterable[str]],
-) -> t.Tuple[int, ...]:
+def measure_table(rows: t.Iterable[t.Iterable[str]],) -> t.Tuple[int, ...]:
     widths: t.Dict[int, int] = {}
     for row in rows:
         for idx, col in enumerate(row):
@@ -19,9 +17,7 @@ def measure_table(
     return tuple(y for x, y in sorted(widths.items()))
 
 
-def iter_rows(
-    rows: t.Any, col_count: int
-) -> t.Generator[t.Any, None, None]:
+def iter_rows(rows: t.Any, col_count: int) -> t.Generator[t.Any, None, None]:
     for row in rows:
         row = tuple(row)
         yield row + ("",) * (col_count - len(row))

@@ -30,7 +30,8 @@ from .exceptions import NoSuchOption
 from .exceptions import UsageError
 
 if t.TYPE_CHECKING:
-    from . import core as core_t
+    from .core import Parameter
+    from .core import Context
 
 GenericT = t.TypeVar("GenericT")
 
@@ -85,7 +86,7 @@ def _unpack_args(args: t.Iterable[str], nargs_spec: t.Iterable[int]):
     # we fill it with the remainder.
     if spos is not None:
         rv[spos] = tuple(args)
-        args = []
+        args: t.List[str] = []  # type: ignore
         rv[spos + 1 :] = reversed(rv[spos + 1 :])
 
     return tuple(rv), list(args)
@@ -100,7 +101,7 @@ def split_opt(opt: str) -> t.Tuple[str, str]:
     return first, opt[1:]
 
 
-def normalize_opt(opt: str, ctx: t.Optional[core_t.Context]) -> str:
+def normalize_opt(opt: str, ctx: t.Optional["Context"]) -> str:
     if ctx is None or ctx.token_normalize_func is None:
         return opt
     prefix, opt = split_opt(opt)
@@ -147,7 +148,7 @@ class Option:
     action: t.Optional[str]
     nargs: int
     const: t.Optional[str]
-    obj: t.Optional[str]
+    obj: "Parameter"
 
     def __init__(
         self,
@@ -156,7 +157,7 @@ class Option:
         action: t.Optional[str] = None,
         nargs: int = 1,
         const: t.Optional[str] = None,
-        obj: t.Optional[str] = None,
+        obj: t.Optional["Parameter"] = None,
     ):
         self._short_opts = []
         self._long_opts = []
@@ -180,7 +181,7 @@ class Option:
         self.action = action
         self.nargs = nargs
         self.const = const
-        self.obj = obj
+        self.obj = t.cast("Parameter", obj)
 
     @property
     def takes_value(self) -> bool:
@@ -229,7 +230,7 @@ class ParsingState:
     opts: t.Dict[str, t.Any]
     largs: t.List[str]
     rargs: t.List[str]
-    order: t.List[core_t.Parameter]
+    order: t.List["Parameter"]
 
     def __init__(self, rargs: t.List[str]):
         self.opts = {}
@@ -257,7 +258,7 @@ class OptionParser:
     _opt_prefixes: t.Set[str]
     _args: t.List[Argument]
 
-    def __init__(self, ctx: t.Optional[core_t.Context] = None):
+    def __init__(self, ctx: t.Optional["Context"] = None):
         #: The :class:`~click.Context` for this parser.  This might be
         #: `None` for some advanced use cases.
         self.ctx = ctx
@@ -318,9 +319,7 @@ class OptionParser:
 
     def parse_args(
         self, args: t.List[str]
-    ) -> t.Tuple[
-        t.Dict[str, t.Any], t.List[str], t.List[core_t.Parameter]
-    ]:
+    ) -> t.Tuple[t.Dict[str, t.Any], t.List[str], t.List["Parameter"]]:
         """Parses positional arguments and returns ``(values, args, order)``
         for the parsed options and arguments as well as the leftover
         arguments if there are any.  The order is a list of objects as they
@@ -384,7 +383,7 @@ class OptionParser:
         # not a very interesting subset!
 
     def _match_long_opt(
-        self, opt: str, explicit_value: str, state: ParsingState
+        self, opt: str, explicit_value: t.Optional[str], state: ParsingState
     ) -> None:
         if opt not in self._long_opt:
             from difflib import get_close_matches
@@ -453,11 +452,11 @@ class OptionParser:
 
     def _get_value_from_state(
         self, option_name: str, option: Option, state: ParsingState
-    ) -> None:
+    ) -> t.Any:
         nargs = option.nargs
 
         if len(state.rargs) < nargs:
-            if option.obj._flag_needs_value:
+            if option.obj._flag_needs_value:  # type: ignore
                 # Option allows omitting the value.
                 value = _flag_needs_value
             else:
@@ -469,7 +468,7 @@ class OptionParser:
             next_rarg = state.rargs[0]
 
             if (
-                option.obj._flag_needs_value
+                option.obj._flag_needs_value  # type: ignore
                 and isinstance(next_rarg, str)
                 and next_rarg[:1] in self._opt_prefixes
                 and len(next_rarg) > 1

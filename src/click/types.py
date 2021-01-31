@@ -13,8 +13,9 @@ from .utils import LazyFile
 from .utils import safecall
 
 if t.TYPE_CHECKING:
-    from . import core as core_t
-    from . import shell_completion as shell_completion_t
+    from .core import Parameter
+    from .core import Context
+    from .shell_completion import CompletionItem
 
 
 class ParamType:
@@ -65,16 +66,16 @@ class ParamType:
     def __call__(
         self,
         value: t.Any,
-        param: t.Optional[core_t.Parameter] = None,
-        ctx: t.Optional[core_t.Context] = None,
+        param: t.Optional["Parameter"] = None,
+        ctx: t.Optional["Context"] = None,
     ) -> t.Any:
         if value is not None:
             return self.convert(value, param, ctx)
 
-    def get_metavar(self, param: core_t.Parameter) -> str:
+    def get_metavar(self, param: "Parameter") -> str:
         """Returns the metavar default for this param if it provides one."""
 
-    def get_missing_message(self, param: core_t.Parameter) -> str:
+    def get_missing_message(self, param: "Parameter") -> str:
         """Optionally might return extra information about a missing
         parameter.
 
@@ -82,10 +83,7 @@ class ParamType:
         """
 
     def convert(
-        self,
-        value: t.Any,
-        param: t.Optional[core_t.Parameter],
-        ctx: t.Optional[core_t.Context],
+        self, value: t.Any, param: t.Optional["Parameter"], ctx: t.Optional["Context"],
     ) -> t.Any:
         """Convert the value to the correct type. This is not called if
         the value is ``None`` (the missing value).
@@ -121,15 +119,15 @@ class ParamType:
     def fail(
         self,
         message: str,
-        param: t.Optional[core_t.Parameter] = None,
-        ctx: t.Optional[core_t.Context] = None,
+        param: t.Optional["Parameter"] = None,
+        ctx: t.Optional["Context"] = None,
     ) -> t.NoReturn:
         """Helper method to fail with an invalid value message."""
         raise BadParameter(message, ctx=ctx, param=param)
 
     def shell_complete(
-        self, ctx: core_t.Context, param: core_t.Parameter, incomplete: str
-    ) -> t.List[shell_completion_t.CompletionItem]:
+        self, ctx: "Context", param: "Parameter", incomplete: str
+    ) -> t.List["CompletionItem"]:
         """Return a list of
         :class:`~click.shell_completion.CompletionItem` objects for the
         incomplete value. Most types do not provide completions, but
@@ -873,7 +871,7 @@ def convert_type(
                 # Can't call convert recursively because that would
                 # incorrectly unwind the tuple to a single type.
                 if isinstance(item, (tuple, list)):
-                    ty = tuple(map(type, item))
+                    ty = tuple(map(type, item))  # type: ignore
                 else:
                     ty = type(item)
         else:

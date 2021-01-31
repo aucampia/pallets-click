@@ -2,9 +2,8 @@ import enum
 import errno
 import os
 import sys
-import typing as t
 import types
-import collections.abc
+import typing as t
 from contextlib import contextmanager
 from contextlib import ExitStack
 from functools import update_wrapper
@@ -29,10 +28,10 @@ from .termui import prompt
 from .termui import style
 from .types import _NumberRangeBase
 from .types import BOOL
+from .types import CompositeParamType
 from .types import convert_type
 from .types import IntRange
 from .types import ParamType
-from .types import CompositeParamType
 from .utils import _detect_program_name
 from .utils import echo
 from .utils import make_default_short_help
@@ -40,7 +39,7 @@ from .utils import make_str
 from .utils import PacifyFlushWrapper
 
 if t.TYPE_CHECKING:
-    from . import shell_completion as shell_completion_t
+    from .shell_completion import CompletionItem
 
 
 _missing = object()
@@ -113,7 +112,7 @@ def _check_multicommand(
 
 
 def batch(
-    iterable: collections.abc.Iterable[GenericT], batch_size: int
+    iterable: t.Iterable[GenericT], batch_size: int
 ) -> t.List[t.Tuple[GenericT, ...]]:
     return list(zip(*repeat(iter(iterable), batch_size)))
 
@@ -138,8 +137,7 @@ def augment_usage_errors(
 
 
 def iter_params_for_processing(
-    invocation_order: t.List["Parameter"],
-    declaration_order: t.List["Parameter"],
+    invocation_order: t.List["Parameter"], declaration_order: t.List["Parameter"],
 ) -> t.List["Parameter"]:
     """Given a sequence of parameters in the order as should be considered
     for processing and an iterable of parameters that exist, this returns
@@ -652,9 +650,7 @@ class Context:
             node = node.parent
         return node
 
-    def find_object(
-        self, object_type: t.Type[GenericT]
-    ) -> t.Optional[GenericT]:
+    def find_object(self, object_type: t.Type[GenericT]) -> t.Optional[GenericT]:
         """Finds the closest object of a given type."""
         node: t.Optional["Context"] = self
         while node is not None:
@@ -671,9 +667,7 @@ class Context:
             self.obj = rv = object_type()
         return rv
 
-    def lookup_default(
-        self, name: str, call: bool = True
-    ) -> t.Optional[t.Any]:
+    def lookup_default(self, name: str, call: bool = True) -> t.Optional[t.Any]:
         """Get the default for a parameter from :attr:`default_map`.
 
         :param name: Name of the parameter.
@@ -853,9 +847,7 @@ class BaseCommand:
     context_settings: t.Dict[str, t.Any]
 
     def __init__(
-        self,
-        name: str,
-        context_settings: t.Optional[t.Dict[str, t.Any]] = None,
+        self, name: str, context_settings: t.Optional[t.Dict[str, t.Any]] = None,
     ):
         #: the name the command thinks it has.  Upon registering a command
         #: on a :class:`Group` the group will default the command name
@@ -940,9 +932,7 @@ class BaseCommand:
         """
         raise NotImplementedError("Base commands are not invokable by default")
 
-    def shell_complete(
-        self, ctx: Context, incomplete: str
-    ) -> t.List[shell_completion_t.CompletionItem]:
+    def shell_complete(self, ctx: Context, incomplete: str) -> t.List["CompletionItem"]:
         """Return a list of completions for the incomplete value. Looks
         at the names of chained multi-commands.
 
@@ -973,7 +963,7 @@ class BaseCommand:
 
     def main(
         self,
-        args: t.List[str] = None,
+        args: t.Optional[t.List[str]] = None,
         prog_name: t.Optional[str] = None,
         complete_var: t.Optional[str] = None,
         standalone_mode: bool = True,
@@ -1050,12 +1040,8 @@ class BaseCommand:
                 sys.exit(e.exit_code)
             except OSError as e:
                 if e.errno == errno.EPIPE:
-                    sys.stdout = t.cast(
-                        t.TextIO, PacifyFlushWrapper(sys.stdout)
-                    )
-                    sys.stderr = t.cast(
-                        t.TextIO, PacifyFlushWrapper(sys.stderr)
-                    )
+                    sys.stdout = t.cast(t.TextIO, PacifyFlushWrapper(sys.stdout))
+                    sys.stderr = t.cast(t.TextIO, PacifyFlushWrapper(sys.stderr))
                     sys.exit(1)
                 else:
                     raise
@@ -1368,9 +1354,7 @@ class Command(BaseCommand):
         if self.callback is not None:
             return ctx.invoke(self.callback, **ctx.params)
 
-    def shell_complete(
-        self, ctx: Context, incomplete: str
-    ) -> t.List[shell_completion_t.CompletionItem]:
+    def shell_complete(self, ctx: Context, incomplete: str) -> t.List["CompletionItem"]:
         """Return a list of completions for the incomplete value. Looks
         at the names of options and chained multi-commands.
 
@@ -1520,18 +1504,18 @@ class MultiCommand(Command):
         .. versionadded:: 3.0
         """
 
-        def decorator(
-            f: t.Callable[..., t.Any]
-        ) -> t.Callable[..., t.Any]:
+        def decorator(f: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
             old_callback = self.result_callback
             if old_callback is None or replace:
                 self.result_callback = f
                 return f
 
-            def function(
-                __value: t.Any, *args: t.Any, **kwargs: t.Any
-            ) -> t.Any:
-                return f(old_callback(__value, *args, **kwargs), *args, **kwargs)  # type: ignore
+            def function(__value: t.Any, *args: t.Any, **kwargs: t.Any) -> t.Any:
+                return f(
+                    old_callback(__value, *args, **kwargs),  # type: ignore
+                    *args,
+                    **kwargs,
+                )
 
             self.result_callback = rv = update_wrapper(function, f)
             return rv
@@ -1687,9 +1671,7 @@ class MultiCommand(Command):
         """
         return []
 
-    def shell_complete(
-        self, ctx: Context, incomplete: str
-    ) -> t.List[shell_completion_t.CompletionItem]:
+    def shell_complete(self, ctx: Context, incomplete: str) -> t.List["CompletionItem"]:
         """Return a list of completions for the incomplete value. Looks
         at the names of options, subcommands, and chained
         multi-commands.
@@ -1730,7 +1712,7 @@ class Group(MultiCommand):
     #: subcommands use a custom command class.
     #:
     #: .. versionadded:: 8.0
-    command_class = None
+    command_class: t.Optional[t.Type[BaseCommand]] = None
 
     #: If set, this is used by the group's :meth:`group` decorator
     #: as the default :class:`Group` class. This is useful to make all
@@ -1742,12 +1724,12 @@ class Group(MultiCommand):
     #: custom groups.
     #:
     #: .. versionadded:: 8.0
-    group_class = None
+    group_class: t.Optional[type] = None
 
     def __init__(
         self,
         name: t.Optional[str] = None,
-        commands: t.Optional[t.Dict[str, Command]] = None,
+        commands: t.Optional[t.Union[t.List[Command], t.Dict[str, Command]]] = None,
         **attrs: t.Any,
     ):
         super().__init__(name, **attrs)
@@ -1789,9 +1771,7 @@ class Group(MultiCommand):
         if self.command_class is not None and "cls" not in kwargs:
             kwargs["cls"] = self.command_class
 
-        def decorator(
-            f: t.Callable[..., t.Any]
-        ) -> t.Callable[..., t.Any]:
+        def decorator(f: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
             cmd = command(*args, **kwargs)(f)
             self.add_command(cmd)
             return cmd
@@ -1820,9 +1800,7 @@ class Group(MultiCommand):
             else:
                 kwargs["cls"] = self.group_class
 
-        def decorator(
-            f: t.Callable[..., t.Any]
-        ) -> t.Callable[..., t.Any]:
+        def decorator(f: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
             cmd = group(*args, **kwargs)(f)
             self.add_command(cmd)
             return cmd
@@ -1845,8 +1823,8 @@ class CommandCollection(MultiCommand):
 
     def __init__(
         self,
-        name: str = None,
-        sources: t.List[MultiCommand] = None,
+        name: t.Optional[str] = None,
+        sources: t.Optional[t.List[MultiCommand]] = None,
         **attrs: t.Any,
     ):
         super().__init__(name, **attrs)
@@ -1951,9 +1929,7 @@ class Parameter:
         type: t.Optional[t.Union[t.Type[t.Any], ParamType]] = None,
         required: bool = False,
         default: t.Any = None,
-        callback: t.Callable[
-            [Context, "Parameter", t.Any], t.Any
-        ] = None,
+        callback: t.Optional[t.Callable[[Context, "Parameter", t.Any], t.Any]] = None,
         nargs: t.Optional[int] = None,
         metavar: t.Optional[str] = None,
         expose_value: bool = True,
@@ -1961,8 +1937,7 @@ class Parameter:
         envvar: t.Optional[t.Union[t.List[str], str]] = None,
         shell_complete: t.Optional[
             t.Callable[
-                [Context, "Parameter", str],
-                t.List[t.Union[shell_completion_t.CompletionItem, str]],
+                [Context, "Parameter", str], t.List[t.Union["CompletionItem", str]],
             ]
         ] = None,
         autocompletion: None = None,
@@ -2203,12 +2178,8 @@ class Parameter:
             if rv:
                 return rv
 
-    def value_from_envvar(
-        self, ctx: Context
-    ) -> t.Optional[t.Union[str, t.List[str]]]:
-        rv: t.Optional[
-            t.Union[str, t.List[str]]
-        ] = self.resolve_envvar_value(ctx)
+    def value_from_envvar(self, ctx: Context) -> t.Optional[t.Union[str, t.List[str]]]:
+        rv: t.Optional[t.Union[str, t.List[str]]] = self.resolve_envvar_value(ctx)
 
         if rv is not None and self.nargs != 1:
             rv = self.type.split_envvar_value(t.cast(str, rv))
@@ -2248,14 +2219,12 @@ class Parameter:
         """Get a stringified version of the param for use in error messages to
         indicate which param caused the error.
         """
-        hint_list = t.cast(t.List[t.Any], self.opts) or [
-            self.human_readable_name
-        ]
+        hint_list = t.cast(t.List[t.Any], self.opts) or [self.human_readable_name]
         return " / ".join(repr(x) for x in hint_list)
 
     def shell_complete(
         self, ctx: Context, incomplete: str
-    ) -> t.Sequence[t.Union[shell_completion_t.CompletionItem, str]]:
+    ) -> t.Sequence[t.Union["CompletionItem", str]]:
         """Return a list of completions for the incomplete value. If a
         ``shell_complete`` function was given during init, it is used.
         Otherwise, the :attr:`type`
@@ -2651,12 +2620,8 @@ class Option(Parameter):
             if rv:
                 return rv
 
-    def value_from_envvar(
-        self, ctx: Context
-    ) -> t.Optional[t.Union[str, t.List[str]]]:
-        rv: t.Optional[
-            t.Union[str, t.List[str]]
-        ] = self.resolve_envvar_value(ctx)
+    def value_from_envvar(self, ctx: Context) -> t.Optional[t.Union[str, t.List[str]]]:
+        rv: t.Optional[t.Union[str, t.List[str]]] = self.resolve_envvar_value(ctx)
 
         if rv is None:
             return None

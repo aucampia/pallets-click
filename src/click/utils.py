@@ -1,7 +1,7 @@
 import os
 import sys
-import typing as t
 import types
+import typing as t
 
 from ._compat import _default_text_stderr
 from ._compat import _default_text_stdout
@@ -27,14 +27,10 @@ def _posixify(name: str) -> str:
     return "-".join(name.split()).lower()
 
 
-def safecall(
-    func: t.Callable[..., t.Any]
-) -> t.Callable[..., t.Any]:
+def safecall(func: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
     """Wraps a function so that it swallows exceptions."""
 
-    def wrapper(
-        *args: t.Any, **kwargs: t.Any
-    ) -> t.Callable[..., t.Any]:
+    def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Callable[..., t.Any]:
         try:
             return func(*args, **kwargs)
         except Exception:
@@ -489,7 +485,7 @@ class PacifyFlushWrapper:
 
 
 def _detect_program_name(
-    path: str = None, _main: types.ModuleType = sys.modules["__main__"]
+    path: t.Optional[str] = None, _main: types.ModuleType = sys.modules["__main__"]
 ) -> str:
     """Determine the command used to run the program, for use in help
     text. If a file or entry point was executed, the file name is

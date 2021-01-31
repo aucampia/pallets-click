@@ -270,9 +270,7 @@ def get_terminal_size() -> t.Tuple[int, int]:
 
 
 def echo_via_pager(
-    text_or_generator: t.Union[
-        str, t.Callable[[], t.Generator[str, t.Any, t.Any]]
-    ],
+    text_or_generator: t.Union[str, t.Callable[[], t.Generator[str, t.Any, t.Any]]],
     color=None,
 ):
     """This function takes a text and shows it via an environment specific
@@ -291,10 +289,7 @@ def echo_via_pager(
     # i: t.Union[t.Iterable[str], t.Iterator[str]]
     i: t.Iterable[str]
     if inspect.isgeneratorfunction(text_or_generator):
-        i = t.cast(
-            t.Callable[[], t.Generator[str, t.Any, t.Any]],
-            text_or_generator,
-        )()
+        i = t.cast(t.Callable[[], t.Generator[str, t.Any, t.Any]], text_or_generator,)()
     elif isinstance(text_or_generator, str):
         i = [text_or_generator]
     else:
@@ -468,9 +463,7 @@ def clear() -> None:
         sys.stdout.write("\033[2J\033[1;1H")
 
 
-def _interpret_color(
-    color: t.Union[int, t.Tuple, t.List], offset: int = 0
-) -> str:
+def _interpret_color(color: t.Union[int, t.Tuple, t.List], offset: int = 0) -> str:
     if isinstance(color, int):
         return f"{38 + offset};5;{color:d}"
 
@@ -703,7 +696,7 @@ def launch(url, wait=False, locate=False):
 
 # If this is provided, getchar() calls into this instead.  This is used
 # for unittesting purposes.
-_getchar = None
+_getchar: t.Any = None
 
 
 def getchar(echo=False):

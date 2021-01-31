@@ -1,16 +1,16 @@
 import typing as t
+
 from ._compat import filename_to_ui
 from ._compat import get_text_stderr
 from .utils import echo
 
 if t.TYPE_CHECKING:
-    from . import core as core_t
+    from .core import Context
+    from .core import Parameter
 
 
 def _join_param_hints(
-    param_hint: t.Optional[
-        t.Union[t.List[t.Any], t.Tuple[t.Any, ...]]
-    ]
+    param_hint: t.Optional[t.Union[t.List[t.Any], t.Tuple[t.Any, ...], str]]
 ) -> str:
     if isinstance(param_hint, (tuple, list)):
         return " / ".join(repr(x) for x in param_hint)
@@ -50,7 +50,7 @@ class UsageError(ClickException):
 
     exit_code = 2
 
-    def __init__(self, message: str, ctx: t.Optional[core_t.Context] = None):
+    def __init__(self, message: str, ctx: t.Optional["Context"] = None):
         super().__init__(message)
         self.ctx = ctx
         self.cmd = self.ctx.command if self.ctx else None
@@ -64,8 +64,7 @@ class UsageError(ClickException):
         hint = ""
         if (
             self.cmd is not None
-            and t.cast(core_t.Command, self.cmd).get_help_option(self.ctx)
-            is not None
+            and self.cmd.get_help_option(self.ctx) is not None  # type: ignore
         ):
             hint = (
                 f"Try '{self.ctx.command_path}"
@@ -98,8 +97,8 @@ class BadParameter(UsageError):
     def __init__(
         self,
         message: str,
-        ctx: t.Optional[core_t.Context] = None,
-        param: t.Optional[core_t.Parameter] = None,
+        ctx: t.Optional["Context"] = None,
+        param: t.Optional["Parameter"] = None,
         param_hint: t.Optional[str] = None,
     ):
         super().__init__(message, ctx)
@@ -115,7 +114,7 @@ class BadParameter(UsageError):
             param_hint = self.param.get_error_hint(self.ctx)
         else:
             return f"Invalid value: {self.message}"
-        param_hint = _join_param_hints(param_hint)  # type: ignore
+        param_hint = _join_param_hints(param_hint)
 
         return f"Invalid value for {param_hint}: {self.message}"
 
@@ -134,9 +133,9 @@ class MissingParameter(BadParameter):
 
     def __init__(
         self,
-        message: t.Optional[str] = None,
-        ctx: t.Optional[core_t.Context] = None,
-        param: t.Optional[core_t.Parameter] = None,
+        message: str = None,  # type: ignore
+        ctx: t.Optional["Context"] = None,
+        param: t.Optional["Parameter"] = None,
         param_hint: t.Optional[str] = None,
         param_type: t.Optional[str] = None,
     ):
@@ -144,10 +143,11 @@ class MissingParameter(BadParameter):
         self.param_type = param_type
 
     def format_message(self) -> str:
+        param_hint: t.Optional[str]
         if self.param_hint is not None:
             param_hint = self.param_hint
         elif self.param is not None:
-            param_hint = self.param.get_error_hint(self.ctx)
+            param_hint = self.param.get_error_hint(self.ctx)  # type: ignore
         else:
             param_hint = None
         param_hint = _join_param_hints(param_hint)

@@ -2,19 +2,22 @@ import os
 import re
 import typing as t
 
-from .core import BaseCommand
-from .core import Command
 from .core import Argument
 from .core import MultiCommand
 from .core import Option
-from .core import Context
 from .core import ParameterSource
 from .parser import split_arg_string
 from .utils import echo
 
+if t.TYPE_CHECKING:
+    from .core import Context
+    from .core import Parameter
+    from .core import BaseCommand
+    from .core import Command
+
 
 def shell_complete(
-    cli: BaseCommand,
+    cli: "BaseCommand",
     ctx_args: t.Dict[str, t.Any],
     prog_name: str,
     complete_var: str,
@@ -218,7 +221,7 @@ class ShellComplete:
 
     def __init__(
         self,
-        cli: BaseCommand,
+        cli: "BaseCommand",
         ctx_args: t.Dict[str, t.Any],
         prog_name: str,
         complete_var: str,
@@ -280,7 +283,7 @@ class ShellComplete:
             return []
 
         obj, incomplete = _resolve_incomplete(ctx, args, incomplete)
-        return obj.shell_complete(ctx, incomplete)
+        return obj.shell_complete(ctx, incomplete)  # type: ignore
 
     def format_completion(self, item: CompletionItem) -> str:
         """Format a completion item into the form recognized by the
@@ -431,7 +434,7 @@ def get_completion_class(shell: str) -> t.Optional[t.Type[ShellComplete]]:
     return _available_shells.get(shell)
 
 
-def _is_incomplete_argument(ctx: Context, param: Argument) -> bool:
+def _is_incomplete_argument(ctx: "Context", param: "Parameter") -> bool:
     """Determine if the given parameter is an argument that can still
     accept values.
 
@@ -454,14 +457,12 @@ def _is_incomplete_argument(ctx: Context, param: Argument) -> bool:
     )
 
 
-def _start_of_option(
-    value: t.Optional[str],
-) -> t.Union[str, None, bool]:
+def _start_of_option(value: t.Optional[str],) -> t.Union[str, None, bool]:
     """Check if the value looks like the start of an option."""
     return value and not value[0].isalnum()
 
 
-def _is_incomplete_option(args: t.List[str], param: Option) -> bool:
+def _is_incomplete_option(args: t.List[str], param: "Parameter") -> bool:
     """Determine if the given parameter is an option that needs a value.
 
     :param args: List of complete args before the incomplete value.
@@ -486,11 +487,8 @@ def _is_incomplete_option(args: t.List[str], param: Option) -> bool:
 
 
 def _resolve_context(
-    cli: BaseCommand,
-    ctx_args: t.Dict[str, t.Any],
-    prog_name: str,
-    args: t.List[str],
-) -> Context:
+    cli: "BaseCommand", ctx_args: t.Dict[str, t.Any], prog_name: str, args: t.List[str],
+) -> "Context":
     """Produce the context hierarchy starting with the command and
     traversing the complete arguments. This only follows the commands,
     it doesn't trigger input prompts or callbacks.
@@ -540,8 +538,8 @@ def _resolve_context(
 
 
 def _resolve_incomplete(
-    ctx: Context, args: t.List[str], incomplete: str
-) -> t.Tuple[BaseCommand, str]:
+    ctx: "Context", args: t.List[str], incomplete: str
+) -> t.Tuple[t.Union["Parameter", "BaseCommand"], str]:
     """Find the Click object that will handle the completion of the
     incomplete value. Return the object and the incomplete value.
 
@@ -567,7 +565,8 @@ def _resolve_incomplete(
     if "--" not in args and _start_of_option(incomplete):
         return ctx.command, incomplete
 
-    assert isinstance(ctx.command, Command)
+    if t.TYPE_CHECKING:
+        assert isinstance(ctx.command, Command)
     params = ctx.command.get_params(ctx)
 
     # If the last complete arg is an option name with an incomplete
