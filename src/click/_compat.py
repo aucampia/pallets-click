@@ -14,8 +14,8 @@ APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.
 )
 WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
 DEFAULT_COLUMNS = 80
-auto_wrap_for_ansi = None
-get_winterm_size = None
+auto_wrap_for_ansi: t.Optional[t.Callable[..., t.Any]] = None
+get_winterm_size: t.Optional[t.Callable[..., t.Any]] = None
 _ansi_re = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
 
 
@@ -495,7 +495,8 @@ def should_strip_ansi(stream=None, color=None):
 # If we're on Windows, we provide transparent integration through
 # colorama.  This will make ANSI colors through the echo function
 # work automatically.
-if WIN:
+# NOTE: double check is needed so mypy does not analyse this on Linux
+if sys.platform.startswith("win") and WIN:
     # Windows has a smaller terminal
     DEFAULT_COLUMNS = 79
 
