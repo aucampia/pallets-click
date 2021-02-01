@@ -6,6 +6,10 @@
 # compared to the original patches as we do not need to patch
 # the entire interpreter but just work in our little world of
 # echo and prompt.
+import sys
+
+assert sys.platform == "win32"
+
 import ctypes
 import io
 import time
@@ -19,8 +23,8 @@ from ctypes import c_ulong
 from ctypes import c_void_p
 from ctypes import POINTER
 from ctypes import py_object
-from ctypes import windll  # type: ignore
-from ctypes import WINFUNCTYPE  # type: ignore
+from ctypes import windll
+from ctypes import WINFUNCTYPE
 from ctypes.wintypes import DWORD
 from ctypes.wintypes import HANDLE
 from ctypes.wintypes import LPCWSTR
