@@ -14,7 +14,6 @@ APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.
 )
 WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
 DEFAULT_COLUMNS = 80
-# [t.TextIO, t.Optional[bool]], t.TextIO
 auto_wrap_for_ansi: t.Optional[
     t.Callable[[t.TextIO, t.Optional[bool]], t.TextIO]
 ] = None
