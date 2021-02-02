@@ -346,7 +346,7 @@ class DateTime(ParamType):
 
 
 class _NumberParamTypeBase(ParamType):
-    _number_class: t.ClassVar[t.Optional[t.Type[t.Any]]] = None
+    _number_class: t.ClassVar[t.Optional[t.Type]] = None
 
     def convert(self, value, param, ctx):
         try:

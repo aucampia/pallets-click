@@ -1626,7 +1626,7 @@ class Group(MultiCommand):
     #: subcommands use a custom command class.
     #:
     #: .. versionadded:: 8.0
-    command_class: t.Optional[t.Type[t.Any]] = None
+    command_class: t.Optional[t.Type[BaseCommand]] = None
 
     #: If set, this is used by the group's :meth:`group` decorator
     #: as the default :class:`Group` class. This is useful to make all
@@ -1638,7 +1638,8 @@ class Group(MultiCommand):
     #: custom groups.
     #:
     #: .. versionadded:: 8.0
-    group_class: t.Optional[t.Type[t.Any]] = None
+    # TODO: when l.Literal can be used `type` should be replaced `t.Literal[type]`
+    group_class: t.Optional[t.Union[t.Type["Group"], type]] = None
 
     def __init__(self, name=None, commands=None, **attrs):
         super().__init__(name, **attrs)
@@ -1652,6 +1653,7 @@ class Group(MultiCommand):
         self.commands = commands
 
     def add_command(self, cmd, name=None):
+        self.group_class = 32
         """Registers another :class:`Command` with this group.  If the name
         is not provided, the name of the command is used.
         """
