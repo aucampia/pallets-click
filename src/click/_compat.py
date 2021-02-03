@@ -16,7 +16,10 @@ WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
 DEFAULT_COLUMNS = 80
 # [t.TextIO, t.Optional[bool]], t.TextIO
 auto_wrap_for_ansi: t.Optional[
-    t.Callable[[t.TextIO, t.Optional[bool]], t.TextIO]
+    t.Union[
+        t.Callable[[t.TextIO], t.TextIO],
+        t.Callable[[t.TextIO, t.Optional[bool]], t.TextIO],
+    ]
 ] = None
 get_winterm_size: t.Optional[t.Callable[[], t.Tuple[int, int]]] = None
 _ansi_re = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
