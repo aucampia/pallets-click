@@ -1654,7 +1654,6 @@ class Group(MultiCommand):
         self.commands = commands
 
     def add_command(self, cmd, name=None):
-        self.group_class = 32
         """Registers another :class:`Command` with this group.  If the name
         is not provided, the name of the command is used.
         """
