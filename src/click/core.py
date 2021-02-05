@@ -1638,9 +1638,12 @@ class Group(MultiCommand):
     #: custom groups.
     #:
     #: .. versionadded:: 8.0
-    # TODO: when support for python versions below 3.8 is dropped
-    #   `type` should be replaced with `t.Literal[type]`
-    group_class: t.Optional[t.Union[t.Type["Group"], type]] = None
+
+    # NOTE: `typing(_extentions).Literal[...]` does not support classes
+    #   (e.g. :class:`type`) as values, so instead of `t.Literal[type]`
+    #   the next best option is `t.Type[type]` as the literal value
+    #   :class:`type` is in itself a type of type.
+    group_class: t.Optional[t.Union[t.Type["Group"], t.Type[type]]] = None
 
     def __init__(self, name=None, commands=None, **attrs):
         super().__init__(name, **attrs)
