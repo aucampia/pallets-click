@@ -696,7 +696,7 @@ def launch(url, wait=False, locate=False):
 
 # If this is provided, getchar() calls into this instead.  This is used
 # for unittesting purposes.
-_getchar: t.Any = None
+_getchar: t.Optional[t.Callable[[bool], str]] = None
 
 
 def getchar(echo=False):

@@ -1724,7 +1724,8 @@ class Group(MultiCommand):
     #: custom groups.
     #:
     #: .. versionadded:: 8.0
-    group_class: t.Optional[type] = None
+    # TODO: when l.Literal can be used `type` should be replaced `t.Literal[type]`
+    group_class: t.Optional[t.Union[t.Type["Group"], type]] = None
 
     def __init__(
         self,

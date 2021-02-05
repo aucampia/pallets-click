@@ -14,8 +14,13 @@ APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.
 )
 WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
 DEFAULT_COLUMNS = 80
-auto_wrap_for_ansi: t.Optional[t.Callable[..., t.Any]] = None
-get_winterm_size: t.Optional[t.Callable[..., t.Any]] = None
+auto_wrap_for_ansi: t.Optional[
+    t.Union[
+        t.Callable[[t.TextIO], t.TextIO],
+        t.Callable[[t.TextIO, t.Optional[bool]], t.TextIO],
+    ]
+] = None
+get_winterm_size: t.Optional[t.Callable[[], t.Tuple[int, int]]] = None
 _ansi_re = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
 
 
@@ -512,9 +517,11 @@ if sys.platform.startswith("win") and WIN:
     except ImportError:
         colorama = None
     else:
-        _ansi_stream_wrappers: t.Any = WeakKeyDictionary()
+        _ansi_stream_wrappers: t.MutableMapping = WeakKeyDictionary()
 
-        def auto_wrap_for_ansi(stream, color=None):
+        def auto_wrap_for_ansi(
+            stream: t.TextIO, color: t.Optional[bool] = None
+        ) -> t.TextIO:
             """This function wraps a stream so that calls through colorama
             are issued to the win32 console API to recolor on demand.  It
             also ensures to reset the colors if a write call is interrupted

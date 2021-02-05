@@ -290,9 +290,9 @@ def echo(
         color = resolve_color_default(color)
         if should_strip_ansi(file, color):
             message = strip_ansi(message)
-        elif WIN:
+        elif sys.platform.startswith("win") and WIN:
             if auto_wrap_for_ansi is not None:
-                file = t.cast(t.TextIO, auto_wrap_for_ansi(file))
+                file = auto_wrap_for_ansi(file)
             elif not color:
                 message = strip_ansi(message)
 
