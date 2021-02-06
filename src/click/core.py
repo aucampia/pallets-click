@@ -28,10 +28,8 @@ from .termui import prompt
 from .termui import style
 from .types import _NumberRangeBase
 from .types import BOOL
-from .types import CompositeParamType
 from .types import convert_type
 from .types import IntRange
-from .types import ParamType
 from .utils import _detect_program_name
 from .utils import echo
 from .utils import make_default_short_help
@@ -40,6 +38,8 @@ from .utils import PacifyFlushWrapper
 
 if t.TYPE_CHECKING:
     from .shell_completion import CompletionItem
+    from .types import CompositeParamType
+    from .types import ParamType
 
 
 _missing = object()
@@ -1724,8 +1724,12 @@ class Group(MultiCommand):
     #: custom groups.
     #:
     #: .. versionadded:: 8.0
-    # TODO: when l.Literal can be used `type` should be replaced `t.Literal[type]`
-    group_class: t.Optional[t.Union[t.Type["Group"], type]] = None
+
+    # NOTE: `typing(_extentions).Literal[...]` does not support classes
+    #   (e.g. :class:`type`) as values, so instead of `t.Literal[type]`
+    #   the next best option is `t.Type[type]` as the literal value
+    #   :class:`type` is in itself a type of type.
+    group_class: t.Optional[t.Union[t.Type["Group"], t.Type[type]]] = None
 
     def __init__(
         self,
